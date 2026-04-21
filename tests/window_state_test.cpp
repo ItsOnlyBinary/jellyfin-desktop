@@ -47,3 +47,16 @@ TEST_CASE("to_logical round-trips through to_physical within 1px") {
     CHECK(std::abs(ls.w - orig.w) <= 1);
     CHECK(std::abs(ls.h - orig.h) <= 1);
 }
+
+// ---------------------------------------------------------------------------
+// initial_geometry
+// ---------------------------------------------------------------------------
+
+TEST_CASE("initial_geometry no saved data returns physical defaults") {
+    Settings::WindowGeometry saved{};
+    auto g = initial_geometry(saved, nullptr);
+    CHECK(g.size.w == Settings::WindowGeometry::kDefaultPhysicalWidth);
+    CHECK(g.size.h == Settings::WindowGeometry::kDefaultPhysicalHeight);
+    CHECK(g.has_position == false);
+    CHECK(g.maximized == false);
+}

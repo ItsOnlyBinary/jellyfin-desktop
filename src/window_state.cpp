@@ -18,7 +18,26 @@ MpvInitGeometry initial_geometry(
     const Settings::WindowGeometry& saved,
     std::function<void(int* w, int* h, int* x, int* y)> clamp_fn)
 {
-    (void)saved; (void)clamp_fn; return {};
+    using WG = Settings::WindowGeometry;
+    MpvInitGeometry result;
+
+    int w = (saved.width > 0 && saved.height > 0)
+                ? saved.width  : WG::kDefaultPhysicalWidth;
+    int h = (saved.width > 0 && saved.height > 0)
+                ? saved.height : WG::kDefaultPhysicalHeight;
+    int x = saved.x;
+    int y = saved.y;
+
+    if (clamp_fn) clamp_fn(&w, &h, &x, &y);
+
+    result.size      = { w, h };
+    result.maximized = saved.maximized;
+
+    if (x >= 0 && y >= 0) {
+        result.position     = { x, y };
+        result.has_position = true;
+    }
+    return result;
 }
 std::optional<PhysicalSize> corrected_size_for_scale(
     const Settings::WindowGeometry& saved, double live_scale)
