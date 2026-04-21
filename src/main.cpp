@@ -39,7 +39,6 @@
 #include "include/cef_parser.h"
 #include "include/cef_version.h"
 
-#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #ifndef _WIN32
