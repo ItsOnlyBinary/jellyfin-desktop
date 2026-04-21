@@ -36,12 +36,12 @@ std::optional<PhysicalSize> corrected_size_for_scale(
     double live_scale);
 
 struct SaveInputs {
-    bool fullscreen;
-    bool maximized;
-    bool was_maximized_before_fullscreen;
-    PhysicalSize window_size;
-    PhysicalSize osd_fallback;
-    float scale;
+    bool fullscreen                       = false;
+    bool maximized                        = false;
+    bool was_maximized_before_fullscreen  = false;
+    PhysicalSize window_size              = {};
+    PhysicalSize osd_fallback             = {};
+    float scale                           = 0.0f;
     std::function<std::optional<PhysicalPoint>()> query_position;
 };
 
