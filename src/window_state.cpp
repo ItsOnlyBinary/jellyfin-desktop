@@ -4,10 +4,15 @@
 namespace window_state {
 
 PhysicalSize to_physical(LogicalSize ls, float scale) {
-    (void)ls; (void)scale; return {};
+    if (scale <= 0.0f) scale = 1.0f;
+    return { static_cast<int>(std::lround(ls.w * scale)),
+             static_cast<int>(std::lround(ls.h * scale)) };
 }
+
 LogicalSize to_logical(PhysicalSize ps, float scale) {
-    (void)ps; (void)scale; return {};
+    if (scale <= 0.0f) scale = 1.0f;
+    return { static_cast<int>(std::lround(ps.w / scale)),
+             static_cast<int>(std::lround(ps.h / scale)) };
 }
 MpvInitGeometry initial_geometry(
     const Settings::WindowGeometry& saved,
