@@ -103,20 +103,58 @@ Settings::WindowGeometry save_geometry(
 
 TransitionGuard::TransitionGuard(std::function<void()> on_begin_locked)
     : on_begin_locked_(std::move(on_begin_locked)) {}
-void TransitionGuard::begin_locked(int pw, int ph) { (void)pw; (void)ph; }
-void TransitionGuard::end_locked() {}
-void TransitionGuard::set_expected_size_locked(int w, int h) { (void)w; (void)h; }
-bool TransitionGuard::active() const { return false; }
+
+void TransitionGuard::begin_locked(int current_pw, int current_ph) {
+    transitioning_  = true;
+    transition_pw_  = current_pw;
+    transition_ph_  = current_ph;
+    expected_w_     = 0;
+    expected_h_     = 0;
+    pending_lw_     = 0;
+    pending_lh_     = 0;
+    if (on_begin_locked_) on_begin_locked_();
+}
+
+void TransitionGuard::end_locked() {
+    transitioning_ = false;
+    expected_w_    = 0;
+    expected_h_    = 0;
+}
+
+void TransitionGuard::set_expected_size_locked(int w, int h) {
+    if (transitioning_ && w == transition_pw_ && h == transition_ph_)
+        return;
+    expected_w_ = w;
+    expected_h_ = h;
+}
+
+bool TransitionGuard::active() const { return transitioning_; }
 int  TransitionGuard::transition_pw() const { return transition_pw_; }
 int  TransitionGuard::transition_ph() const { return transition_ph_; }
-bool TransitionGuard::should_drop_frame(int pw, int ph) const {
-    (void)pw; (void)ph; return false;
+
+bool TransitionGuard::should_drop_frame(int frame_pw, int frame_ph) const {
+    if (!transitioning_) return false;
+    if (expected_w_ <= 0) return true;
+    if (frame_pw == expected_w_ && frame_ph == expected_h_) return false;
+    return true;
 }
-bool TransitionGuard::maybe_end_on_frame(int pw, int ph) {
-    (void)pw; (void)ph; return false;
+
+bool TransitionGuard::maybe_end_on_frame(int frame_pw, int frame_ph) {
+    if (!transitioning_) return false;
+    if (expected_w_ <= 0) return false;
+    if (frame_pw == expected_w_ && frame_ph == expected_h_) {
+        end_locked();
+        return true;
+    }
+    return false;
 }
+
 int  TransitionGuard::pending_lw() const { return pending_lw_; }
 int  TransitionGuard::pending_lh() const { return pending_lh_; }
-void TransitionGuard::set_pending_logical(int lw, int lh) { (void)lw; (void)lh; }
+
+void TransitionGuard::set_pending_logical(int lw, int lh) {
+    pending_lw_ = lw;
+    pending_lh_ = lh;
+}
 
 } // namespace window_state

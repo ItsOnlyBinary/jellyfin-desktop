@@ -373,3 +373,20 @@ TEST_CASE("save_geometry windowed logical dims computed as lround(pw/scale)") {
     CHECK(r.logical_width  == 960);
     CHECK(r.logical_height == 540);
 }
+
+// ---------------------------------------------------------------------------
+// TransitionGuard
+// ---------------------------------------------------------------------------
+
+TEST_CASE("TransitionGuard initial state not active") {
+    TransitionGuard g;
+    CHECK(g.active() == false);
+}
+
+TEST_CASE("TransitionGuard begin_locked sets active and captures transition size") {
+    TransitionGuard g;
+    g.begin_locked(1920, 1080);
+    CHECK(g.active() == true);
+    CHECK(g.transition_pw() == 1920);
+    CHECK(g.transition_ph() == 1080);
+}
