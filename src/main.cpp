@@ -722,11 +722,8 @@ int main(int argc, char* argv[]) {
     }
     LOG_INFO(LOG_MAIN, "[FLOW] CefInitialize returned ok");
 
-    double display_hidpi_scale = 0.0;
-    mpv_get_property(g_mpv.Get(), "display-hidpi-scale",
-                     MPV_FORMAT_DOUBLE, &display_hidpi_scale);
-    int fs_flag = 0;
-    mpv_get_property(g_mpv.Get(), "fullscreen", MPV_FORMAT_FLAG, &fs_flag);
+    double display_hidpi_scale = mpv::display_scale();
+    bool fs_flag = mpv::fullscreen();
     LOG_INFO(LOG_MAIN, "[FLOW] display-hidpi-scale={} fullscreen={}",
              display_hidpi_scale, fs_flag);
 
