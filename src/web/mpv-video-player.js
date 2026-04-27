@@ -359,16 +359,16 @@
         getAspectRatio() {
             const aspectRatio = typeof this.appSettings.aspectRatio === 'function'
                 ? this.appSettings.aspectRatio()
-                : this.appSettings.aspectRatio;
+                : this.appSettings._currentAspectRatio;
 
-            console.log('[Media] [MPV] getAspectRatio: raw=', this.appSettings.aspectRatio, 'resolved=', aspectRatio, 'type=', typeof this.appSettings.aspectRatio);
+            console.log('[Media] [MPV] getAspectRatio: resolved=', aspectRatio, 'type=', typeof this.appSettings.aspectRatio);
             return aspectRatio || 'auto';
         }
         setAspectRatio(value) {
             if (typeof this.appSettings.aspectRatio === 'function') {
                 this.appSettings.aspectRatio(value);
             } else {
-                this.appSettings.aspectRatio = value;
+                this.appSettings._currentAspectRatio = value;
             }
             window.api.player.setAspectMode(value);
         }
