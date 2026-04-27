@@ -356,9 +356,19 @@
                 { id: 'fill',  name: this.globalize.translate('AspectRatioFill') }
             ];
         }
-        getAspectRatio() { return this.appSettings.aspectRatio() || 'auto'; }
+        getAspectRatio() {
+            const aspectRatio = typeof this.appSettings.aspectRatio === 'function'
+                ? this.appSettings.aspectRatio()
+                : this.appSettings.aspectRatio;
+
+            return aspectRatio || 'auto';
+        }
         setAspectRatio(value) {
-            this.appSettings.aspectRatio(value);
+            if (typeof this.appSettings.aspectRatio === 'function') {
+                this.appSettings.aspectRatio(value);
+            } else {
+                this.appSettings.aspectRatio = value;
+            }
             window.api.player.setAspectMode(value);
         }
     }
