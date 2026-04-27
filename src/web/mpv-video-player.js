@@ -365,6 +365,7 @@
             return aspectRatio || 'auto';
         }
         setAspectRatio(value) {
+            console.log('[Media] [MPV] setAspectRatio: value=', value, 'type=', typeof this.appSettings.aspectRatio);
             if (typeof this.appSettings.aspectRatio === 'function') {
                 this.appSettings.aspectRatio(value);
             } else {
