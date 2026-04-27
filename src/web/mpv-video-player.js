@@ -361,6 +361,7 @@
                 ? this.appSettings.aspectRatio()
                 : this.appSettings.aspectRatio;
 
+            console.log('[Media] [MPV] getAspectRatio: raw=', this.appSettings.aspectRatio, 'resolved=', aspectRatio, 'type=', typeof this.appSettings.aspectRatio);
             return aspectRatio || 'auto';
         }
         setAspectRatio(value) {
