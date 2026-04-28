@@ -635,10 +635,7 @@ static void win_apply_idle_inhibit() {
 
     // Only apply if we're on the designated API thread
     if (tid != g_inhibit_api_thread) {
-        LOG_DEBUG(LOG_PLATFORM,
-            "win_apply_idle_inhibit: skipping (on thread {} but API thread is {})",
-            tid, g_inhibit_api_thread);
-        return;
+        return;  // Not the API thread, skip
     }
 
     if (g_inhibit_desired == g_inhibit_applied) {
@@ -669,8 +666,8 @@ static void win_apply_idle_inhibit() {
     }
 
     LOG_DEBUG(LOG_PLATFORM,
-        "win_apply_idle_inhibit: applying {}, calling SetThreadExecutionState(0x{:x})",
-        level_str, flags);
+        "win_apply_idle_inhibit: applying {} on thread {}, calling SetThreadExecutionState(0x{:x})",
+        level_str, tid, flags);
 
     EXECUTION_STATE prev = SetThreadExecutionState(flags);
 
@@ -679,14 +676,6 @@ static void win_apply_idle_inhibit() {
         LOG_ERROR(LOG_PLATFORM,
             "SetThreadExecutionState FAILED: thread_id={} err={} flags=0x{:x}",
             tid, err, flags);
-    } else {
-        LOG_DEBUG(LOG_PLATFORM,
-            "  previous state: 0x{:x} (thread_id={})",
-            prev, tid);
-    }
-
-    if (desc) {
-        LocalFree(desc);
     }
 }
 // Monitor mpv's HWND for size/fullscreen changes.
