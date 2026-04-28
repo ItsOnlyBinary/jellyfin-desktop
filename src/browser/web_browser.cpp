@@ -203,7 +203,16 @@ bool WebBrowser::handleMessage(const std::string& name,
     } else if (name == "notifyMetadata") {
         std::string json = args->GetString(0).ToString();
         MediaMetadata meta = parseMetadataJson(json);
+        auto old_media_type = g_media_type.load(std::memory_order_relaxed);
         g_media_type = meta.media_type;
+        auto state = g_playback_state.load(std::memory_order_relaxed);
+        const char* state_str = (state == PlaybackState::Playing) ? "Playing" :
+                                (state == PlaybackState::Paused) ? "Paused" : "Stopped";
+        const char* old_media_str = (old_media_type == MediaType::Video) ? "Video" :
+                                    (old_media_type == MediaType::Audio) ? "Audio" : "Unknown";
+        const char* new_media_str = (meta.media_type == MediaType::Video) ? "Video" :
+                                    (meta.media_type == MediaType::Audio) ? "Audio" : "Unknown";
+        LOG_DEBUG(LOG_MAIN, "notifyMetadata: state={}, media_type: {} -> {}", state_str, old_media_str, new_media_str);
         update_idle_inhibit();
         if (g_media_session)
             g_media_session->setMetadata(meta);

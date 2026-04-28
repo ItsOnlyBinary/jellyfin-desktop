@@ -67,11 +67,20 @@ TitlebarColor* g_titlebar_color = nullptr;
 std::atomic<int> g_display_hz{60};
 
 void update_idle_inhibit() {
-    if (g_playback_state.load(std::memory_order_relaxed) != PlaybackState::Playing) {
+    auto state = g_playback_state.load(std::memory_order_relaxed);
+    auto media_type = g_media_type.load(std::memory_order_relaxed);
+    const char* state_str = (state == PlaybackState::Playing) ? "Playing" :
+                            (state == PlaybackState::Paused) ? "Paused" : "Stopped";
+    const char* media_str = (media_type == MediaType::Video) ? "Video" :
+                            (media_type == MediaType::Audio) ? "Audio" : "Unknown";
+    if (state != PlaybackState::Playing) {
+        LOG_DEBUG(LOG_MAIN, "update_idle_inhibit: state={}, media={} -> setting None", state_str, media_str);
         g_platform.set_idle_inhibit(IdleInhibitLevel::None);
-    } else if (g_media_type.load(std::memory_order_relaxed) == MediaType::Audio) {
+    } else if (media_type == MediaType::Audio) {
+        LOG_DEBUG(LOG_MAIN, "update_idle_inhibit: state={}, media={} -> setting System", state_str, media_str);
         g_platform.set_idle_inhibit(IdleInhibitLevel::System);
     } else {
+        LOG_DEBUG(LOG_MAIN, "update_idle_inhibit: state={}, media={} -> setting Display", state_str, media_str);
         g_platform.set_idle_inhibit(IdleInhibitLevel::Display);
     }
 }
@@ -224,6 +233,7 @@ static void cef_consumer_thread() {
             switch (ev.type) {
             case MpvEventType::PAUSE:
                 g_playback_state = ev.flag ? PlaybackState::Paused : PlaybackState::Playing;
+                LOG_DEBUG(LOG_MAIN, "PAUSE event: flag={} -> state={}", ev.flag, ev.flag ? "Paused" : "Playing");
                 update_idle_inhibit();
                 g_web_browser->execJs(ev.flag ? "window._nativeEmit('paused')" : "window._nativeEmit('playing')");
                 if (g_media_session)
@@ -262,6 +272,7 @@ static void cef_consumer_thread() {
                 }
                 break;
             case MpvEventType::FILE_LOADED:
+                LOG_DEBUG(LOG_MAIN, "FILE_LOADED event");
                 g_playback_state = PlaybackState::Playing;
                 update_idle_inhibit();
                 g_web_browser->execJs("window._nativeEmit('playing')");
@@ -269,6 +280,7 @@ static void cef_consumer_thread() {
                     g_media_session->setPlaybackState(PlaybackState::Playing);
                 break;
             case MpvEventType::END_FILE_EOF:
+                LOG_DEBUG(LOG_MAIN, "END_FILE_EOF event");
                 g_playback_state = PlaybackState::Stopped;
                 update_idle_inhibit();
                 g_web_browser->execJs("window._nativeEmit('finished')");
@@ -276,6 +288,7 @@ static void cef_consumer_thread() {
                     g_media_session->setPlaybackState(PlaybackState::Stopped);
                 break;
             case MpvEventType::END_FILE_ERROR: {
+                LOG_DEBUG(LOG_MAIN, "END_FILE_ERROR event");
                 g_playback_state = PlaybackState::Stopped;
                 update_idle_inhibit();
                 auto val = CefValue::Create();
@@ -287,6 +300,7 @@ static void cef_consumer_thread() {
                 break;
             }
             case MpvEventType::END_FILE_CANCEL:
+                LOG_DEBUG(LOG_MAIN, "END_FILE_CANCEL event");
                 g_playback_state = PlaybackState::Stopped;
                 update_idle_inhibit();
                 g_web_browser->execJs("window._nativeEmit('canceled')");
@@ -911,6 +925,7 @@ int main(int argc, char* argv[]) {
     g_media_session = nullptr;
     g_titlebar_color = nullptr;
     media_session_thread.stop();
+    LOG_DEBUG(LOG_MAIN, "Shutdown: clearing idle inhibit");
     g_platform.set_idle_inhibit(IdleInhibitLevel::None);
 
     cef_thread.join();
