@@ -227,6 +227,10 @@ static void cef_consumer_thread() {
 #endif
 
         g_cef_queue.drain_wake();
+#ifdef _WIN32
+        extern void win_apply_idle_inhibit();  // Apply any pending idle inhibit changes
+        win_apply_idle_inhibit();
+#endif
         MpvEvent ev;
         while (g_cef_queue.try_pop(ev)) {
             if (!g_web_browser) continue;

@@ -586,41 +586,92 @@ static const char* wide_to_utf8(PWSTR wstr) {
     return buffer;
 }
 
+// =====================================================================
+// Idle inhibit: serialize Windows API calls to a single thread
+// since SetThreadExecutionState is per-thread
+// =====================================================================
+
+static std::mutex g_inhibit_mtx;
+static IdleInhibitLevel g_inhibit_desired = IdleInhibitLevel::None;  // desired state
+static IdleInhibitLevel g_inhibit_applied = IdleInhibitLevel::None;  // currently applied state
+static DWORD g_inhibit_api_thread = 0;                               // which thread applies API calls
+
 static void win_set_idle_inhibit(IdleInhibitLevel level) {
-    UINT flags = ES_CONTINUOUS;
-    const char* level_str = "Unknown";
-
-    switch (level) {
-    case IdleInhibitLevel::Display:
-        flags |= ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED;
-        level_str = "Display";
-        break;
-
-    case IdleInhibitLevel::System:
-        flags |= ES_SYSTEM_REQUIRED;
-        level_str = "System";
-        break;
-
-    case IdleInhibitLevel::None:
-        flags = ES_CONTINUOUS; // attempt to clear
-        level_str = "None";
-        break;
-    }
-
-    // --- Thread diagnostics ---
     DWORD tid = GetCurrentThreadId();
-
     const char* thread_name = "unknown";
     PWSTR desc = nullptr;
     if (SUCCEEDED(GetThreadDescription(GetCurrentThread(), &desc)) && desc) {
         thread_name = wide_to_utf8(desc);
     }
 
-    LOG_DEBUG(LOG_PLATFORM,
-        "win_set_idle_inhibit({}): thread_id={} thread_name={} flags=0x{:x}",
-        level_str, tid, thread_name, flags);
+    const char* level_str = (level == IdleInhibitLevel::Display) ? "Display" :
+                            (level == IdleInhibitLevel::System) ? "System" : "None";
 
-    // --- Call API ---
+    LOG_DEBUG(LOG_PLATFORM,
+        "win_set_idle_inhibit({}): from thread_id={} thread_name={}",
+        level_str, tid, thread_name);
+
+    {
+        std::lock_guard<std::mutex> lock(g_inhibit_mtx);
+        if (g_inhibit_desired == level) {
+            LOG_DEBUG(LOG_PLATFORM, "  -> already at desired level, ignoring");
+            return;  // Already at desired level
+        }
+        g_inhibit_desired = level;
+
+        // Record the first thread that calls this as the API thread (for this session)
+        if (g_inhibit_api_thread == 0) {
+            g_inhibit_api_thread = tid;
+            LOG_DEBUG(LOG_PLATFORM, "  -> thread {} will manage Windows API calls", tid);
+        }
+    }
+}
+
+// Call this from the CEF/main thread to apply any pending inhibit changes
+static void win_apply_idle_inhibit() {
+    DWORD tid = GetCurrentThreadId();
+
+    std::lock_guard<std::mutex> lock(g_inhibit_mtx);
+
+    // Only apply if we're on the designated API thread
+    if (tid != g_inhibit_api_thread) {
+        LOG_DEBUG(LOG_PLATFORM,
+            "win_apply_idle_inhibit: skipping (on thread {} but API thread is {})",
+            tid, g_inhibit_api_thread);
+        return;
+    }
+
+    if (g_inhibit_desired == g_inhibit_applied) {
+        return;  // No change needed
+    }
+
+    g_inhibit_applied = g_inhibit_desired;
+
+    UINT flags = ES_CONTINUOUS;
+    const char* level_str;
+
+    switch (g_inhibit_applied) {
+    case IdleInhibitLevel::Display:
+        flags |= ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED;
+        level_str = "Display";
+        break;
+    case IdleInhibitLevel::System:
+        flags |= ES_SYSTEM_REQUIRED;
+        level_str = "System";
+        break;
+    case IdleInhibitLevel::None:
+        flags = ES_CONTINUOUS;
+        level_str = "None";
+        break;
+    default:
+        level_str = "Unknown";
+        break;
+    }
+
+    LOG_DEBUG(LOG_PLATFORM,
+        "win_apply_idle_inhibit: applying {}, calling SetThreadExecutionState(0x{:x})",
+        level_str, flags);
+
     EXECUTION_STATE prev = SetThreadExecutionState(flags);
 
     if (prev == 0) {
