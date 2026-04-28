@@ -628,7 +628,7 @@ static void win_set_idle_inhibit(IdleInhibitLevel level) {
 }
 
 // Call this from the CEF/main thread to apply any pending inhibit changes
-static void win_apply_idle_inhibit() {
+void win_apply_idle_inhibit() {
     DWORD tid = GetCurrentThreadId();
 
     std::lock_guard<std::mutex> lock(g_inhibit_mtx);
