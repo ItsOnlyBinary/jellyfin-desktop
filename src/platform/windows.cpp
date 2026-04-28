@@ -575,22 +575,69 @@ static float win_get_scale() {
 // Input thread: transparent child HWND -> CEF events
 // =====================================================================
 
+static const char* wide_to_utf8(PWSTR wstr) {
+    static thread_local char buffer[256];
+
+    if (!wstr) return "null";
+
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, buffer, sizeof(buffer), NULL, NULL);
+    if (len == 0) return "conversion_error";
+
+    return buffer;
+}
+
 static void win_set_idle_inhibit(IdleInhibitLevel level) {
     UINT flags = ES_CONTINUOUS;
+    const char* level_str = "Unknown";
+
     switch (level) {
     case IdleInhibitLevel::Display:
         flags |= ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED;
+        level_str = "Display";
         break;
+
     case IdleInhibitLevel::System:
         flags |= ES_SYSTEM_REQUIRED;
+        level_str = "System";
         break;
+
     case IdleInhibitLevel::None:
-        // ES_CONTINUOUS alone releases the inhibit
+        flags = ES_CONTINUOUS; // attempt to clear
+        level_str = "None";
         break;
     }
-    SetThreadExecutionState(flags);
-}
 
+    // --- Thread diagnostics ---
+    DWORD tid = GetCurrentThreadId();
+
+    const char* thread_name = "unknown";
+    PWSTR desc = nullptr;
+    if (SUCCEEDED(GetThreadDescription(GetCurrentThread(), &desc)) && desc) {
+        thread_name = wide_to_utf8(desc);
+    }
+
+    LOG_DEBUG(LOG_PLATFORM,
+        "win_set_idle_inhibit({}): thread_id={} thread_name={} flags=0x{:x}",
+        level_str, tid, thread_name, flags);
+
+    // --- Call API ---
+    EXECUTION_STATE prev = SetThreadExecutionState(flags);
+
+    if (prev == 0) {
+        DWORD err = GetLastError();
+        LOG_ERROR(LOG_PLATFORM,
+            "SetThreadExecutionState FAILED: thread_id={} err={} flags=0x{:x}",
+            tid, err, flags);
+    } else {
+        LOG_DEBUG(LOG_PLATFORM,
+            "  previous state: 0x{:x} (thread_id={})",
+            prev, tid);
+    }
+
+    if (desc) {
+        LocalFree(desc);
+    }
+}
 // Monitor mpv's HWND for size/fullscreen changes.
 static HHOOK g_wndproc_hook = nullptr;
 

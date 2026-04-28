@@ -241,6 +241,7 @@ static void cef_consumer_thread() {
                 break;
             case MpvEventType::TIME_POS: {
                 int ms = static_cast<int>(ev.dbl * 1000);
+                LOG_DEBUG(LOG_MAIN, "TIME_POS: {}ms", ms);
                 g_web_browser->execJs("window._nativeUpdatePosition(" + std::to_string(ms) + ")");
                 if (g_media_session)
                     g_media_session->setPosition(static_cast<int64_t>(ev.dbl * 1000000));
