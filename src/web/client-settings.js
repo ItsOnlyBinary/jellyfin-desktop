@@ -122,7 +122,8 @@
                     labelText.textContent = setting.displayName;
                     container.appendChild(labelText);
                     const control = document.createElement('select');
-                    control.className = 'emby-select-withcolor emby-select';
+                    control.className = 'emby-select-withcolor';
+                    control.setAttribute('is', 'emby-select')
                     control.setAttribute('label', setting.displayName);
                     for (const option of setting.options) {
                         const val = typeof option === 'string' ? option : option.value;
