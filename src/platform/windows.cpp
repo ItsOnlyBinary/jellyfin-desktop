@@ -69,6 +69,17 @@ struct WinState {
     int about_sw = 0, about_sh = 0;
     bool about_visible = false;
 
+    // Popup window (rendered manually from OSR PET_POPUP buffer)
+    HWND popup_hwnd = nullptr;
+    IDCompositionTarget* dcomp_popup_target = nullptr;
+    IDCompositionVisual* dcomp_popup_root = nullptr;
+    IDCompositionVisual* dcomp_popup_visual = nullptr;
+    IDXGISwapChain1* popup_swap_chain = nullptr;
+    int popup_sw = 0, popup_sh = 0;
+    bool popup_visible = false;
+    int popup_lx = 0, popup_ly = 0; // logical position
+    int popup_lw = 0, popup_lh = 0; // logical size
+
     // Window state
     float cached_scale = 1.0f;
     int mpv_pw = 0, mpv_ph = 0;  // mpv's current physical size
@@ -533,6 +544,126 @@ static void win_set_expected_size(int w, int h) {
 }
 
 // =====================================================================
+// Popup window (for <select> dropdowns in OSR mode)
+// =====================================================================
+
+static LRESULT CALLBACK win_popup_wndproc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    switch (msg) {
+    case WM_MOUSEACTIVATE:
+        return MA_NOACTIVATE;
+    default:
+        return DefWindowProcW(hwnd, msg, wp, lp);
+    }
+}
+
+static void win_ensure_popup_hwnd() {
+    if (g_win.popup_hwnd) return;
+
+    WNDCLASSEXW wc = { sizeof(wc) };
+    wc.lpfnWndProc = win_popup_wndproc;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.lpszClassName = L"JellyfinPopup";
+    RegisterClassExW(&wc);
+
+    // Style: Popup, top-most, layered (for DComp), no taskbar icon.
+    // We don't use WS_CHILD because dropdowns often need to extend outside the main window.
+    g_win.popup_hwnd = CreateWindowExW(
+        WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+        wc.lpszClassName, L"", WS_POPUP,
+        0, 0, 1, 1, g_win.mpv_hwnd, nullptr, wc.hInstance, nullptr);
+
+    if (!g_win.popup_hwnd) {
+        LOG_ERROR(LOG_PLATFORM, "CreateWindowExW failed for popup: 0x{:08x}", GetLastError());
+        return;
+    }
+
+    // Create DComp target for the popup window
+    HRESULT hr = g_win.dcomp_device->CreateTargetForHwnd(g_win.popup_hwnd, FALSE, &g_win.dcomp_popup_target);
+    if (SUCCEEDED(hr)) {
+        g_win.dcomp_device->CreateVisual(&g_win.dcomp_popup_root);
+        g_win.dcomp_device->CreateVisual(&g_win.dcomp_popup_visual);
+        g_win.dcomp_popup_root->AddVisual(g_win.dcomp_popup_visual, FALSE, nullptr);
+        g_win.dcomp_popup_target->SetRoot(g_win.dcomp_popup_root);
+    } else {
+        LOG_ERROR(LOG_PLATFORM, "CreateTargetForHwnd failed for popup: 0x{:08x}", hr);
+    }
+}
+
+static void win_popup_show(int x, int y, int lw, int lh) {
+    win_ensure_popup_hwnd();
+    if (!g_win.popup_hwnd) return;
+
+    g_win.popup_visible = true;
+    g_win.popup_lx = x;
+    g_win.popup_ly = y;
+    g_win.popup_lw = lw;
+    g_win.popup_lh = lh;
+
+    // Window position will be updated when we have a buffer to render (in win_popup_present)
+}
+
+static void win_popup_hide() {
+    g_win.popup_visible = false;
+    if (g_win.popup_hwnd) {
+        ShowWindow(g_win.popup_hwnd, SW_HIDE);
+    }
+}
+
+static void win_popup_present_software(const void* buffer, int pw, int ph, int lw, int lh) {
+    if (!g_win.popup_visible || !g_win.popup_hwnd || pw <= 0 || ph <= 0) return;
+
+    std::lock_guard<std::mutex> lock(g_win.surface_mtx);
+
+    // Ensure swap chain size matches physical buffer
+    if (!g_win.popup_swap_chain || g_win.popup_sw != pw || g_win.popup_sh != ph) {
+        if (g_win.popup_swap_chain) g_win.popup_swap_chain->Release();
+
+        DXGI_SWAP_CHAIN_DESC1 desc = {};
+        desc.Width = pw;
+        desc.Height = ph;
+        desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        desc.BufferCount = 2;
+        desc.SampleDesc.Count = 1;
+        desc.Scaling = DXGI_SCALING_STRETCH;
+        desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        desc.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+
+        HRESULT hr = g_win.dxgi_factory->CreateSwapChainForComposition(g_win.d3d_device, &desc, nullptr, &g_win.popup_swap_chain);
+        if (FAILED(hr)) {
+            LOG_ERROR(LOG_PLATFORM, "CreateSwapChainForComposition failed for popup: 0x{:08x}", hr);
+            return;
+        }
+
+        g_win.popup_sw = pw;
+        g_win.popup_sh = ph;
+        g_win.dcomp_popup_visual->SetContent(g_win.popup_swap_chain);
+    }
+
+    // Update window position and size
+    float scale = win_get_scale();
+    POINT pt = { static_cast<LONG>(g_win.popup_lx * scale), static_cast<LONG>(g_win.popup_ly * scale) };
+    ClientToScreen(g_win.mpv_hwnd, &pt);
+
+    SetWindowPos(g_win.popup_hwnd, HWND_TOPMOST, pt.x, pt.y,
+                 static_cast<int>(lw * scale), static_cast<int>(lh * scale),
+                 SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+    // Map and copy buffer
+    ComPtr<ID3D11Texture2D> back_buffer;
+    g_win.popup_swap_chain->GetBuffer(0, IID_PPV_ARGS(&back_buffer));
+    g_win.d3d_context->UpdateSubresource(back_buffer.Get(), 0, nullptr, buffer, pw * 4, 0);
+
+    g_win.popup_swap_chain->Present(1, 0);
+    g_win.dcomp_device->Commit();
+}
+
+static void win_popup_present(const CefAcceleratedPaintInfo& info, int lw, int lh) {
+    // accelerated path not implemented for popups yet, fall back to software
+    (void)info; (void)lw; (void)lh;
+}
+
+// =====================================================================
 // Fullscreen
 // =====================================================================
 
@@ -833,78 +964,6 @@ static void win_open_external_url(const std::string& url) {
         LOG_ERROR(LOG_PLATFORM, "ShellExecuteW failed ({}): {}", (INT_PTR)r, url);
 }
 
-static bool win_try_native_popup_menu(int x, int y, int /*lw*/, int /*lh*/,
-                                      const std::vector<std::string>& options,
-                                      int current_index,
-                                      std::function<void(int)> on_selected) {
-    if (!g_win.mpv_hwnd || options.empty()) {
-        LOG_WARN(LOG_PLATFORM, "win_try_native_popup_menu: invalid state (hwnd={} options={})",
-                 (void*)g_win.mpv_hwnd, options.size());
-        return false;
-    }
-
-    HMENU hMenu = CreatePopupMenu();
-    if (!hMenu) {
-        LOG_ERROR(LOG_PLATFORM, "CreatePopupMenu failed: 0x{:08x}", GetLastError());
-        return false;
-    }
-
-    for (size_t i = 0; i < options.size(); i++) {
-        UINT flags = MF_STRING;
-        if ((int)i == current_index) flags |= MF_CHECKED;
-
-        // Escape ampersands for Windows menu display
-        std::string opt = options[i];
-        size_t pos = 0;
-        while ((pos = opt.find('&', pos)) != std::string::npos) {
-            opt.replace(pos, 1, "&&");
-            pos += 2;
-        }
-
-        int wlen = MultiByteToWideChar(CP_UTF8, 0, opt.data(), (int)opt.size(), nullptr, 0);
-        if (wlen > 0) {
-            std::wstring wstr(wlen, L'\0');
-            MultiByteToWideChar(CP_UTF8, 0, opt.data(), (int)opt.size(), wstr.data(), wlen);
-            AppendMenuW(hMenu, flags, i + 1, wstr.c_str());
-        } else {
-            AppendMenuW(hMenu, flags, i + 1, L"");
-        }
-    }
-
-    float scale = win_get_scale();
-    POINT pt = { static_cast<LONG>(x * scale), static_cast<LONG>(y * scale) };
-    
-    LOG_INFO(LOG_PLATFORM, "win_try_native_popup_menu: showing menu at logical {},{} (physical {},{}) on hwnd {}",
-             x, y, pt.x, pt.y, (void*)g_win.mpv_hwnd);
-
-    if (!ClientToScreen(g_win.mpv_hwnd, &pt)) {
-        LOG_ERROR(LOG_PLATFORM, "ClientToScreen failed: 0x{:08x}", GetLastError());
-    }
-
-    LOG_INFO(LOG_PLATFORM, "win_try_native_popup_menu: screen coords {},{}", pt.x, pt.y);
-
-    // TrackPopupMenu blocks. SetForegroundWindow helps ensure the menu captures focus.
-    SetForegroundWindow(g_win.mpv_hwnd);
-    
-    BOOL ok = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
-                             pt.x, pt.y, 0, g_win.mpv_hwnd, nullptr);
-    
-    int cmd = ok;
-    if (!ok && GetLastError() != 0) {
-        LOG_ERROR(LOG_PLATFORM, "TrackPopupMenu failed: 0x{:08x}", GetLastError());
-    }
-
-    DestroyMenu(hMenu);
-
-    LOG_INFO(LOG_PLATFORM, "win_try_native_popup_menu: selected cmd={}", cmd);
-
-    if (on_selected) {
-        on_selected(cmd > 0 ? cmd - 1 : -1);
-    }
-
-    return true;
-}
-
 // Query window position relative to the monitor's working area (excludes
 // taskbar), in physical pixels. Matches mpv's --geometry +X+Y coordinate
 // system on Windows (vo_calc_window_geometry uses the working area).
@@ -961,11 +1020,13 @@ Platform make_windows_platform() {
         .about_present_software = win_about_present_software,
         .about_resize = win_about_resize,
         .set_about_visible = win_set_about_visible,
-        .popup_show = [](int, int, int, int) {},
-        .popup_hide = []() {},
-        .popup_present = [](const CefAcceleratedPaintInfo&, int, int) {},
-        .popup_present_software = [](const void*, int, int, int, int) {},
-        .try_native_popup_menu = win_try_native_popup_menu,
+        .popup_show = win_popup_show,
+        .popup_hide = win_popup_hide,
+        .popup_present = win_popup_present,
+        .popup_present_software = win_popup_present_software,
+        .try_native_popup_menu = [](int, int, int, int,
+                                    const std::vector<std::string>&, int,
+                                    std::function<void(int)>) { return false; },
         .fade_overlay = win_fade_overlay,
         .set_fullscreen = win_set_fullscreen,
         .toggle_fullscreen = win_toggle_fullscreen,
