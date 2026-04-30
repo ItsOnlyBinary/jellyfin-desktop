@@ -837,9 +837,18 @@ static bool win_try_native_popup_menu(int x, int y, int /*lw*/, int /*lh*/,
                                       const std::vector<std::string>& options,
                                       int current_index,
                                       std::function<void(int)> on_selected) {
-    if (!g_win.mpv_hwnd || options.empty()) return false;
+    if (!g_win.mpv_hwnd || options.empty()) {
+        LOG_WARN(LOG_PLATFORM, "win_try_native_popup_menu: invalid state (hwnd={} options={})",
+                 (void*)g_win.mpv_hwnd, options.size());
+        return false;
+    }
 
     HMENU hMenu = CreatePopupMenu();
+    if (!hMenu) {
+        LOG_ERROR(LOG_PLATFORM, "CreatePopupMenu failed: 0x{:08x}", GetLastError());
+        return false;
+    }
+
     for (size_t i = 0; i < options.size(); i++) {
         UINT flags = MF_STRING;
         if ((int)i == current_index) flags |= MF_CHECKED;
@@ -864,12 +873,30 @@ static bool win_try_native_popup_menu(int x, int y, int /*lw*/, int /*lh*/,
 
     float scale = win_get_scale();
     POINT pt = { static_cast<LONG>(x * scale), static_cast<LONG>(y * scale) };
-    ClientToScreen(g_win.mpv_hwnd, &pt);
+    
+    LOG_INFO(LOG_PLATFORM, "win_try_native_popup_menu: showing menu at logical {},{} (physical {},{}) on hwnd {}",
+             x, y, pt.x, pt.y, (void*)g_win.mpv_hwnd);
 
-    // TrackPopupMenu blocks.
-    int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+    if (!ClientToScreen(g_win.mpv_hwnd, &pt)) {
+        LOG_ERROR(LOG_PLATFORM, "ClientToScreen failed: 0x{:08x}", GetLastError());
+    }
+
+    LOG_INFO(LOG_PLATFORM, "win_try_native_popup_menu: screen coords {},{}", pt.x, pt.y);
+
+    // TrackPopupMenu blocks. SetForegroundWindow helps ensure the menu captures focus.
+    SetForegroundWindow(g_win.mpv_hwnd);
+    
+    BOOL ok = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
                              pt.x, pt.y, 0, g_win.mpv_hwnd, nullptr);
+    
+    int cmd = ok;
+    if (!ok && GetLastError() != 0) {
+        LOG_ERROR(LOG_PLATFORM, "TrackPopupMenu failed: 0x{:08x}", GetLastError());
+    }
+
     DestroyMenu(hMenu);
+
+    LOG_INFO(LOG_PLATFORM, "win_try_native_popup_menu: selected cmd={}", cmd);
 
     if (on_selected) {
         on_selected(cmd > 0 ? cmd - 1 : -1);

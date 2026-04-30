@@ -79,7 +79,7 @@
     window.jmpInfo = {
         version: '1.0.0',
         deviceName: 'Jellyfin Desktop',
-        mode: 'desktop',
+        mode: (window.jmpNative && window.jmpNative.supportsNativeMenus === false) ? 'tv' : 'desktop',
         userAgent: navigator.userAgent,
         scriptPath: '',
         sections: [

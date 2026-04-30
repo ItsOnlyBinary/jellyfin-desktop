@@ -172,6 +172,10 @@ void CefLayer::try_show_popup() {
     if (!popup_visible_ || !popup_size_received_ || !popup_options_received_)
         return;
 
+    LOG_INFO(LOG_CEF, "try_show_popup: visible={} options={} rect={}x{}@{},{}",
+             popup_visible_, popup_options_.size(),
+             popup_rect_.width, popup_rect_.height, popup_rect_.x, popup_rect_.y);
+
     if (!popup_options_.empty() && g_platform.try_native_popup_menu) {
         CefRefPtr<CefLayer> self = this;
         auto on_selected = [self](int index) {
@@ -184,10 +188,12 @@ void CefLayer::try_show_popup() {
                 popup_rect_.width, popup_rect_.height,
                 popup_options_, popup_selected_idx_,
                 std::move(on_selected))) {
+            LOG_INFO(LOG_CEF, "try_show_popup: native menu handled the request");
             return;
         }
     }
 
+    LOG_INFO(LOG_CEF, "try_show_popup: falling back to compositor popup");
     g_platform.popup_show(popup_rect_.x, popup_rect_.y,
                           popup_rect_.width, popup_rect_.height);
 }

@@ -384,6 +384,18 @@ void App::OnContextCreated(CefRefPtr<CefBrowser> browser,
                                 V8_PROPERTY_ATTRIBUTE_READONLY);
         }
     }
+    // Flag for JS to know if it needs to fallback to web-based menus.
+    // X11 is currently the only platform without native menu or subsurface support.
+    bool supportsNative = true;
+#if defined(__linux__) && !defined(WAYLAND)
+    supportsNative = false; 
+#endif
+#ifdef _WIN32
+    // supportsNative = false; // Uncomment to force web-based menus on Windows
+#endif
+    jmpNative->SetValue("supportsNativeMenus", CefV8Value::CreateBool(supportsNative),
+                        V8_PROPERTY_ATTRIBUTE_READONLY);
+
     window->SetValue("jmpNative", jmpNative, V8_PROPERTY_ATTRIBUTE_READONLY);
 
     if (!scripts || scripts->GetSize() == 0) return;
