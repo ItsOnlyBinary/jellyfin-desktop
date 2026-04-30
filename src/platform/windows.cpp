@@ -833,6 +833,51 @@ static void win_open_external_url(const std::string& url) {
         LOG_ERROR(LOG_PLATFORM, "ShellExecuteW failed ({}): {}", (INT_PTR)r, url);
 }
 
+static bool win_try_native_popup_menu(int x, int y, int /*lw*/, int /*lh*/,
+                                      const std::vector<std::string>& options,
+                                      int current_index,
+                                      std::function<void(int)> on_selected) {
+    if (!g_win.mpv_hwnd || options.empty()) return false;
+
+    HMENU hMenu = CreatePopupMenu();
+    for (size_t i = 0; i < options.size(); i++) {
+        UINT flags = MF_STRING;
+        if ((int)i == current_index) flags |= MF_CHECKED;
+
+        // Escape ampersands for Windows menu display
+        std::string opt = options[i];
+        size_t pos = 0;
+        while ((pos = opt.find('&', pos)) != std::string::npos) {
+            opt.replace(pos, 1, "&&");
+            pos += 2;
+        }
+
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, opt.data(), (int)opt.size(), nullptr, 0);
+        if (wlen > 0) {
+            std::wstring wstr(wlen, L'\0');
+            MultiByteToWideChar(CP_UTF8, 0, opt.data(), (int)opt.size(), wstr.data(), wlen);
+            AppendMenuW(hMenu, flags, i + 1, wstr.c_str());
+        } else {
+            AppendMenuW(hMenu, flags, i + 1, L"");
+        }
+    }
+
+    float scale = win_get_scale();
+    POINT pt = { static_cast<LONG>(x * scale), static_cast<LONG>(y * scale) };
+    ClientToScreen(g_win.mpv_hwnd, &pt);
+
+    // TrackPopupMenu blocks.
+    int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_TOPALIGN,
+                             pt.x, pt.y, 0, g_win.mpv_hwnd, nullptr);
+    DestroyMenu(hMenu);
+
+    if (on_selected) {
+        on_selected(cmd > 0 ? cmd - 1 : -1);
+    }
+
+    return true;
+}
+
 // Query window position relative to the monitor's working area (excludes
 // taskbar), in physical pixels. Matches mpv's --geometry +X+Y coordinate
 // system on Windows (vo_calc_window_geometry uses the working area).
@@ -893,9 +938,7 @@ Platform make_windows_platform() {
         .popup_hide = []() {},
         .popup_present = [](const CefAcceleratedPaintInfo&, int, int) {},
         .popup_present_software = [](const void*, int, int, int, int) {},
-        .try_native_popup_menu = [](int, int, int, int,
-                                    const std::vector<std::string>&, int,
-                                    std::function<void(int)>) { return false; },
+        .try_native_popup_menu = win_try_native_popup_menu,
         .fade_overlay = win_fade_overlay,
         .set_fullscreen = win_set_fullscreen,
         .toggle_fullscreen = win_toggle_fullscreen,
