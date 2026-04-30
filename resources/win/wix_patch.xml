@@ -1,4 +1,4 @@
-<CPackWiXFragment>
+<CPackWiXPatch>
   <!-- Override default per-user folder to match user request -->
   <Property Id="WixPerUserFolder" Value="[LocalAppDataFolder]Programs" />
 
@@ -37,4 +37,4 @@
   <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="1" Description="Create a shortcut for Jellyfin Desktop on your desktop.">
     <ComponentRef Id="DesktopShortcut"/>
   </Feature>
-</CPackWiXFragment>
+</CPackWiXPatch>
