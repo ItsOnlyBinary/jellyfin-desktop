@@ -581,6 +581,9 @@ static void win_ensure_popup_hwnd() {
         return;
     }
 
+    // Set initial alpha so it's not invisible by default
+    SetLayeredWindowAttributes(g_win.popup_hwnd, 0, 255, LWA_ALPHA);
+
     // Create DComp target for the popup window
     HRESULT hr = g_win.dcomp_device->CreateTargetForHwnd(g_win.popup_hwnd, FALSE, &g_win.dcomp_popup_target);
     if (SUCCEEDED(hr)) {
@@ -616,11 +619,19 @@ static void win_popup_hide() {
 static void win_popup_present_software(const void* buffer, int pw, int ph, int lw, int lh) {
     if (!g_win.popup_visible || !g_win.popup_hwnd || pw <= 0 || ph <= 0) return;
 
+    static bool first_paint = true;
+    if (first_paint) {
+        LOG_INFO(LOG_PLATFORM, "win_popup_present_software: first paint received {}x{} (logical {}x{})", pw, ph, lw, lh);
+        first_paint = false;
+    }
+
     std::lock_guard<std::mutex> lock(g_win.surface_mtx);
 
     // Ensure swap chain size matches physical buffer
     if (!g_win.popup_swap_chain || g_win.popup_sw != pw || g_win.popup_sh != ph) {
         if (g_win.popup_swap_chain) g_win.popup_swap_chain->Release();
+
+        LOG_INFO(LOG_PLATFORM, "win_popup_present_software: creating/resizing swap chain to {}x{}", pw, ph);
 
         DXGI_SWAP_CHAIN_DESC1 desc = {};
         desc.Width = pw;
@@ -649,6 +660,7 @@ static void win_popup_present_software(const void* buffer, int pw, int ph, int l
     POINT pt = { static_cast<LONG>(g_win.popup_lx * scale), static_cast<LONG>(g_win.popup_ly * scale) };
     ClientToScreen(g_win.mpv_hwnd, &pt);
 
+    // Ensure window is shown and positioned
     SetWindowPos(g_win.popup_hwnd, HWND_TOPMOST, pt.x, pt.y,
                  static_cast<int>(lw * scale), static_cast<int>(lh * scale),
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
@@ -659,6 +671,8 @@ static void win_popup_present_software(const void* buffer, int pw, int ph, int l
     if (SUCCEEDED(hr) && back_buffer) {
         g_win.d3d_context->UpdateSubresource(back_buffer, 0, nullptr, buffer, pw * 4, 0);
         back_buffer->Release();
+    } else {
+        LOG_ERROR(LOG_PLATFORM, "GetBuffer failed for popup: 0x{:08x}", hr);
     }
 
     g_win.popup_swap_chain->Present(1, 0);
