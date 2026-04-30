@@ -144,7 +144,8 @@
                     container.className = 'inputContainer';
                     const control = document.createElement('textarea');
                     control.setAttribute('is', 'emby-textarea');
-                    control.className = 'textarea-mono';
+                    control.className = 'emby-input';
+                    control.style.resize = 'none';
                     control.value = values[setting.key] || '';
                     control.rows = 2;
                     control.addEventListener('change', () => {
