@@ -26,7 +26,8 @@ $Prerequisites = @(
     @{ Command = "cmake";  Name = "CMake";     WingetId = "Kitware.CMake" },
     @{ Command = "ninja";  Name = "Ninja";     WingetId = "Ninja-build.Ninja" },
     @{ Command = "7z";     Name = "7-Zip";     WingetId = "7zip.7zip" },
-    @{ Command = "git";    Name = "Git";       WingetId = "Git.Git" }
+    @{ Command = "git";    Name = "Git";       WingetId = "Git.Git" },
+    @{ Command = "candle"; Name = "WiX Toolset"; WingetId = "WiXToolset.WixToolset" }
 )
 
 function Find-Command($Command) {

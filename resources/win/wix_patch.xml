@@ -1,0 +1,40 @@
+<CPackWiXFragment>
+  <!-- Override default per-user folder to match user request -->
+  <Property Id="WixPerUserFolder" Value="[LocalAppDataFolder]Programs" />
+
+  <!-- Start Menu Shortcut -->
+  <DirectoryRef Id="PROGRAMMENU_FOLDER">
+    <Component Id="StartMenuShortcut" Guid="*">
+      <Shortcut Id="ApplicationStartMenuShortcut"
+                Name="Jellyfin Desktop"
+                Description="Jellyfin Desktop Client"
+                Target="[INSTALL_ROOT]jellyfin-desktop.exe"
+                WorkingDirectory="INSTALL_ROOT"
+                Icon="ProductIcon"/>
+      <RemoveFolder Id="PROGRAMMENU_FOLDER" On="uninstall"/>
+      <RegistryValue Root="HKMU" Key="Software\Jellyfin\JellyfinDesktop" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+  </DirectoryRef>
+
+  <!-- Desktop Shortcut -->
+  <DirectoryRef Id="DesktopFolder">
+    <Component Id="DesktopShortcut" Guid="*">
+      <Shortcut Id="ApplicationDesktopShortcut"
+                Name="Jellyfin Desktop"
+                Description="Jellyfin Desktop Client"
+                Target="[INSTALL_ROOT]jellyfin-desktop.exe"
+                WorkingDirectory="INSTALL_ROOT"
+                Icon="ProductIcon"/>
+      <RegistryValue Root="HKCU" Key="Software\Jellyfin\JellyfinDesktop" Name="desktopshortcut" Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+  </DirectoryRef>
+
+  <!-- Add shortcuts to features so they appear in the Custom installation step -->
+  <Feature Id="StartMenuShortcutFeature" Title="Start Menu Shortcut" Level="1" Description="Create a shortcut for Jellyfin Desktop in the Start Menu.">
+    <ComponentRef Id="StartMenuShortcut"/>
+  </Feature>
+  
+  <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="1" Description="Create a shortcut for Jellyfin Desktop on your desktop.">
+    <ComponentRef Id="DesktopShortcut"/>
+  </Feature>
+</CPackWiXFragment>

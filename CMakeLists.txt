@@ -821,7 +821,21 @@ if(WIN32)
         set(_WIN_ARCH "x86")
     endif()
     set(CPACK_PACKAGE_FILE_NAME "JellyfinDesktop-${APP_VERSION_FULL}-windows-${_WIN_ARCH}")
-    set(CPACK_GENERATOR "ZIP")
+    set(CPACK_GENERATOR "ZIP;WIX")
+    set(CPACK_WIX_UPGRADE_GUID "51AE6C24-671F-4DAE-B2EC-DC49E0947B97")
+    set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/resources/win/jellyfin.ico")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+
+    # Enable per-user / per-machine choice
+    set(CPACK_WIX_UI_REF "WixUI_Advanced")
+    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin\\Jellyfin Desktop")
+    set(CPACK_WIX_PROPERTY_WixAppFolder "WixPerMachineFolder")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin\\Jellyfin Desktop")
+    set(CPACK_WIX_PROGRAM_MENU_FOLDER "Jellyfin")
+
+    # Add shortcuts via patch
+    set(CPACK_WIX_PROPERTY_ARPPRODUCTICON "ProductIcon")
+    set(CPACK_WIX_PATCH_FILE "${CMAKE_SOURCE_DIR}/resources/win/wix_patch.xml")
 elseif(APPLE)
     set(CPACK_GENERATOR "ZIP")
 else()
