@@ -824,7 +824,10 @@ if(WIN32)
     set(CPACK_GENERATOR "ZIP;WIX")
     set(CPACK_WIX_UPGRADE_GUID "51AE6C24-671F-4DAE-B2EC-DC49E0947B97")
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/resources/win/jellyfin.ico")
-    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+    
+    # WiX requires .txt or .rtf for the license
+    configure_file("${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_BINARY_DIR}/LICENSE.txt" COPYONLY)
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_BINARY_DIR}/LICENSE.txt")
 
     # Enable per-user / per-machine choice
     set(CPACK_WIX_UI_REF "WixUI_Advanced")
