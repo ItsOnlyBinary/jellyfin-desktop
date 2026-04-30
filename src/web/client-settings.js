@@ -117,12 +117,7 @@
 
                 if (setting.options) {
                     container.className = 'selectContainer';
-                    const labelText = document.createElement('label');
-                    labelText.className = 'inputLabel';
-                    labelText.textContent = setting.displayName;
-                    container.appendChild(labelText);
                     const control = document.createElement('select');
-                    control.className = 'emby-select-withcolor';
                     control.setAttribute('is', 'emby-select')
                     control.setAttribute('label', setting.displayName);
                     for (const option of setting.options) {
@@ -147,13 +142,9 @@
                     }
                 } else if (setting.inputType === 'textarea') {
                     container.className = 'inputContainer';
-                    const labelText = document.createElement('label');
-                    labelText.className = 'inputLabel';
-                    labelText.textContent = setting.displayName;
-                    container.appendChild(labelText);
                     const control = document.createElement('textarea');
-                    control.className = 'emby-input';
-                    control.style.resize = 'none';
+                    control.setAttribute('is', 'emby-textarea');
+                    control.className = 'textarea-mono';
                     control.value = values[setting.key] || '';
                     control.rows = 2;
                     control.addEventListener('change', () => {
