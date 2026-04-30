@@ -828,9 +828,9 @@ if(WIN32)
 
     # Enable per-user / per-machine choice
     set(CPACK_WIX_UI_REF "WixUI_Advanced")
-    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin\\Jellyfin Desktop")
+    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin/Jellyfin Desktop")
     set(CPACK_WIX_PROPERTY_WixAppFolder "WixPerMachineFolder")
-    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin\\Jellyfin Desktop")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin/Jellyfin Desktop")
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Jellyfin")
 
     # Add shortcuts via patch
