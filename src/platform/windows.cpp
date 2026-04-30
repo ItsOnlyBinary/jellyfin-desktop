@@ -21,10 +21,13 @@
 #include <dcomp.h>
 #include <dwmapi.h>
 #include <shellapi.h>
+#include <wrl/client.h>
 
 #include <mutex>
 #include <thread>
 #include <atomic>
+
+using Microsoft::WRL::ComPtr;
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -101,6 +104,7 @@ static WinState g_win;
 
 static void win_begin_transition_locked();
 static void win_end_transition_locked();
+static float win_get_scale();
 
 static bool win_is_fullscreen_style(LONG_PTR style) {
     return (style & WS_CAPTION) == 0 && (style & WS_THICKFRAME) == 0;
@@ -650,9 +654,12 @@ static void win_popup_present_software(const void* buffer, int pw, int ph, int l
                  SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
     // Map and copy buffer
-    ComPtr<ID3D11Texture2D> back_buffer;
-    g_win.popup_swap_chain->GetBuffer(0, IID_PPV_ARGS(&back_buffer));
-    g_win.d3d_context->UpdateSubresource(back_buffer.Get(), 0, nullptr, buffer, pw * 4, 0);
+    ID3D11Texture2D* back_buffer = nullptr;
+    HRESULT hr = g_win.popup_swap_chain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&back_buffer));
+    if (SUCCEEDED(hr) && back_buffer) {
+        g_win.d3d_context->UpdateSubresource(back_buffer, 0, nullptr, buffer, pw * 4, 0);
+        back_buffer->Release();
+    }
 
     g_win.popup_swap_chain->Present(1, 0);
     g_win.dcomp_device->Commit();
