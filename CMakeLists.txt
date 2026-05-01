@@ -818,7 +818,7 @@ else()
     set(CPACK_PACKAGE_VERSION
         "${APP_VERSION_MAJOR}.${APP_VERSION_MINOR}.${APP_VERSION_PATCH}.100000")
 endif()
-set()
+
 if(WIN32)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64|ARM64|arm64)")
         set(_WIN_ARCH "arm64")
