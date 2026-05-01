@@ -50,11 +50,16 @@
     <!-- Our custom dialog layer: inserts desktop shortcut checkbox -->
     <UIRef Id="WixUI_Custom_DesktopShortcut" />
 
-    <!-- DESKTOPSHORTCUT=1 enables the desktop shortcut feature (set by checkbox or silent CLI) -->
-    <Property Id="DESKTOPSHORTCUT" Value="" />
+    <!-- DESKTOPSHORTCUT=1 enables the desktop shortcut feature (set by checkbox or silent CLI).
+         On repair/upgrade the registry search restores the previously chosen value. -->
+    <Property Id="DESKTOPSHORTCUT">
+      <RegistrySearch Id="SearchDesktopShortcut" Root="HKCU"
+                      Key="Software\Jellyfin\Desktop\$(var.ProductName)"
+                      Name="DesktopShortcut" Type="raw" />
+    </Property>
 
     <!-- ==================== Directory tree ========================= -->
-    <StandardDirectory Id="TARGETDIR" Name="SourceDir">
+    <StandardDirectory Id="TARGETDIR">
       <Directory Id="APPLICATIONFOLDER">
 
         <!-- Main executable — listed separately to attach the Start Menu shortcut -->
@@ -121,7 +126,7 @@
       <!-- Desktop shortcut feature: Level 0 = off by default.
            Condition raises Level to 1 (on) when user checks the box. -->
       <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="0">
-        <Condition Level="1">DESKTOPSHORTCUT = 1</Condition>
+        <Condition Level="1">DESKTOPSHORTCUT = "1"</Condition>
         <ComponentRef Id="DesktopShortcutComp" />
       </Feature>
     </Feature>

@@ -41,7 +41,8 @@
         <Control Id="Back" Type="PushButton"
                  X="180" Y="243" Width="56" Height="17"
                  Text="!(loc.WixUIBack)">
-          <Publish Event="NewDialog" Value="InstallScopeDlg" />
+          <Publish Event="NewDialog" Value="InstallDirDlg" Condition="NOT MSIINSTALLPERUSER" />
+          <Publish Event="NewDialog" Value="InstallScopeDlg" Condition="MSIINSTALLPERUSER = 1" />
         </Control>
         <Control Id="Next" Type="PushButton"
                  X="236" Y="243" Width="56" Height="17"
@@ -55,11 +56,16 @@
         </Control>
       </Dialog>
 
-      <!-- Rewire InstallScopeDlg Next -> our dialog (instead of VerifyReadyDlg) -->
+      <!-- Per-user path: InstallScopeDlg Next -> DesktopShortcutDlg (skips InstallDirDlg) -->
       <Publish Dialog="InstallScopeDlg" Control="Next"
+               Event="NewDialog" Value="DesktopShortcutDlg" Order="3"
+               Condition="MSIINSTALLPERUSER = 1" />
+
+      <!-- Per-machine path: InstallDirDlg Next -> DesktopShortcutDlg -->
+      <Publish Dialog="InstallDirDlg" Control="Next"
                Event="NewDialog" Value="DesktopShortcutDlg" Order="3" />
 
-      <!-- Rewire VerifyReadyDlg Back -> our dialog (instead of InstallScopeDlg) -->
+      <!-- Both paths: VerifyReadyDlg Back -> DesktopShortcutDlg -->
       <Publish Dialog="VerifyReadyDlg" Control="Back"
                Event="NewDialog" Value="DesktopShortcutDlg" Order="3" />
 
