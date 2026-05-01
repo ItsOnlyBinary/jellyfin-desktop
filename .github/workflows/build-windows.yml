@@ -40,16 +40,29 @@ jobs:
       - name: Cache CEF
         uses: actions/cache@v5
         with:
-          path: |
-            third_party/cef
-            third_party/cef_binary_*
+          path: third_party/cef_binary_*
           key: cef-${{ matrix.platform }}-${{ hashFiles('CEF_VERSION') }}
 
       - name: Download CEF
         run: |
           python dev/tools/download_cef.py --platform ${{ matrix.platform }}
 
+      - name: Get mpv SHA
+        id: mpv-sha
+        shell: pwsh
+        run: |
+          $sha = (git submodule status third_party/mpv).Trim().Split(" ")[0].TrimStart("-")
+          echo "sha=$sha" >> $env:GITHUB_OUTPUT
+
+      - name: Cache mpv
+        id: cache-mpv
+        uses: actions/cache@v5
+        with:
+          path: third_party/mpv-install
+          key: mpv-${{ matrix.platform }}-${{ steps.mpv-sha.outputs.sha }}
+
       - name: Setup MSYS2
+        if: steps.cache-mpv.outputs.cache-hit != 'true'
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.msystem }}
@@ -66,6 +79,7 @@ jobs:
             ${{ matrix.pkg_prefix }}-spirv-cross
 
       - name: Build mpv from source
+        if: steps.cache-mpv.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           dev\windows\build_mpv_source.ps1 -Arch ${{ matrix.arch }} -Force

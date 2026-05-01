@@ -281,6 +281,30 @@ def main():
     platform_id = args.platform or get_platform_id()
     cef_link = args.output_dir / "cef"
 
+    # Quick check if already set up (skips network calls)
+    if args.version and not args.show_latest:
+        target_prefix = f"cef_binary_{args.version}_{platform_id}_minimal"
+        # Check if the extracted directory exists
+        for d in args.output_dir.glob(f"{target_prefix}*"):
+            if d.is_dir() and (d / "include").exists():
+                # Found it! Now check if the link is correct
+                is_link = cef_link.is_symlink() or (
+                    hasattr(cef_link, "is_junction") and cef_link.is_junction()
+                )
+                if is_link:
+                    try:
+                        current_target = os.readlink(cef_link)
+                        if pathlib.Path(current_target).name == d.name:
+                            log.info("CEF %s already set up and linked, skipping", d.name)
+                            return
+                    except Exception:
+                        pass
+                
+                # Link is missing or wrong, but we have the directory.
+                log.info("Found extracted CEF %s, recreating link", d.name)
+                create_symlink(d, cef_link)
+                return
+
     existing = find_existing_tarball(args.output_dir, platform_id)
     if existing and args.version:
         _, existing_name = existing
@@ -330,15 +354,6 @@ def main():
     log.info("Version: %s", versioned_dir_name)
 
     versioned_dir = args.output_dir / versioned_dir_name
-
-    is_link = cef_link.is_symlink() or (
-        hasattr(cef_link, "is_junction") and cef_link.is_junction()
-    )
-    if is_link:
-        current_target = os.readlink(cef_link)
-        if current_target == versioned_dir_name and versioned_dir.exists():
-            log.info("Skipping, already set up")
-            return
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
