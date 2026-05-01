@@ -842,15 +842,11 @@ if(WIN32)
         set(CPACK_WIX_ARCHITECTURE "x64")
     endif()
 
-    # UI: allows install scope selection + directory selection
-    set(CPACK_WIX_UI_REF "WixUI_Advanced")
-
-    # Allow per-user OR per-machine installs
-    set(CPACK_WIX_PROPERTY_WixAppFolder "WixPerUserFolder")
+    # UI: allows directory selection
+    set(CPACK_WIX_UI_REF "WixUI_InstallDir")
 
     # Default install directory (user can change it)
     set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin/Jellyfin Desktop")
-    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin/Jellyfin Desktop")
 
     # Start menu folder
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Jellyfin")
