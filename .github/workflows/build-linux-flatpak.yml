@@ -39,8 +39,8 @@ jobs:
       - name: Build Flatpak
         run: ./dev/flatpak/build.sh
 
-      - name: Upload artifact
+      - name: Upload flatpack artifact
         uses: actions/upload-artifact@v7
         with:
-          name: linux-flatpak-x86_64
           path: dist/JellyfinDesktop-*.flatpak
+          archive: false

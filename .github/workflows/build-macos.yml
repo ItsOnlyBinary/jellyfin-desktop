@@ -99,8 +99,8 @@ jobs:
           echo "Created: dist/${DMG_NAME}"
           ls -la "dist/${DMG_NAME}"
 
-      - name: Upload artifact
+      - name: Upload DMG artifact
         uses: actions/upload-artifact@v7
         with:
-          name: macos-${{ matrix.arch }}
           path: dist/JellyfinDesktop-*.dmg
+          archive: false

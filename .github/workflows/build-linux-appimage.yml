@@ -41,8 +41,8 @@ jobs:
             -e VERSION="${VERSION}" \
             jellyfin-desktop-appimage
 
-      - name: Upload artifact
+      - name: Upload appimage artifact
         uses: actions/upload-artifact@v7
         with:
-          name: linux-appimage-x86_64
           path: dist/JellyfinDesktop-*.AppImage
+          archive: false
