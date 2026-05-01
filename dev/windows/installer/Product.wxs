@@ -6,7 +6,7 @@
     UpgradeCode       e.g. "{D4E5F6A7-...}" — fixed for releases, UUID v5 for dev
     IsDevBuild        "0" for release, "1" for dev — controls MajorUpgrade
     InstallDirName    e.g. "Jellyfin Desktop (dev-abc1234)" — used as folder name
-    SourceDir         absolute path to cmake --install output directory
+    SourceDir         absolute path to cmake install output directory
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
