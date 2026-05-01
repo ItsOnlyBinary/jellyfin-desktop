@@ -26,13 +26,15 @@ $IsDevBuild     = $VersionRaw -match "-"
 $VersionNumeric = $VersionRaw -replace "-.*$", ""
 
 # 4th MSI version field: 0 locally, GITHUB_RUN_NUMBER in CI
-$RunNumber = if ($env:GITHUB_RUN_NUMBER) { $env:GITHUB_RUN_NUMBER } else { "0" }
-$ProductVersion = if ($IsDevBuild) { "$VersionNumeric.$RunNumber" } else { $VersionNumeric }
+$RunNumber = if ($env:GITHUB_RUN_NUMBER) {
+    [int][Math]::Min([Math]::Max(0, [int]$env:GITHUB_RUN_NUMBER), 65535)
+} else { 0 }
+$ProductVersion = if ($IsDevBuild) { "$VersionNumeric.$RunNumber" } else { "$VersionNumeric.0" }
 
 # --- Git SHA (dev builds only) -----------------------------------------
 $ShortSha = ""
 if ($IsDevBuild) {
-    $ShortSha = (& git -C $RepoRoot rev-parse --short HEAD 2>$null)
+    $ShortSha = (& git -C $RepoRoot rev-parse --short HEAD 2>$null | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $ShortSha) { $ShortSha = "local" }
 }
 
