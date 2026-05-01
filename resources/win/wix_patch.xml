@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<CPackWiXPatch>
+<CPackWixPatch>
 
   <!-- ========================= -->
   <!-- UI: add checkbox          -->
@@ -69,4 +69,4 @@
 
   </CPackWixFragment>
 
-</CPackWiXPatch>
+</CPackWixPatch>
