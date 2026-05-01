@@ -1,4 +1,3 @@
-#Requires -Version 7
 param(
     [ValidateSet("x64", "arm64")]
     [string]$Arch = "x64",
