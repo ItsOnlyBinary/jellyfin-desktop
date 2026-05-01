@@ -808,7 +808,7 @@ if(BUILD_TESTING)
 endif()
 
 # CPack for creating distribution packages
-set(CPACK_PACKAGE_NAME "jellyfin-desktop")
+set(CPACK_PACKAGE_NAME "Jellyfin Desktop")
 set(CPACK_PACKAGE_VENDOR "Jellyfin")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Jellyfin Desktop Client")
 set(CPACK_PACKAGE_VERSION "${APP_VERSION}")
