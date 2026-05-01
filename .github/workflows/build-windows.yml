@@ -97,3 +97,11 @@ jobs:
         with:
           path: dist/JellyfinDesktop-*.msi
           archive: false
+
+      - name: Upload WiX log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: wix-log
+          path: |
+            **/wix.log
