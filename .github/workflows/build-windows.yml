@@ -76,6 +76,7 @@ jobs:
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.arch }}
           cmake -B build -G Ninja ^
             -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
+            -DRUN_NUMBER=%GITHUB_RUN_NUMBER% ^
             -DEXTERNAL_MPV_DIR=%CD%\third_party\mpv-install
           cmake --build build
 
