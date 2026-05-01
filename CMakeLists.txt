@@ -37,11 +37,6 @@ set(APP_VERSION_MINOR ${CMAKE_MATCH_2})
 set(APP_VERSION_PATCH ${CMAKE_MATCH_3})
 if(APP_VERSION MATCHES "-")
     set(APP_VERSION_FILEFLAGS "VS_FF_PRERELEASE")
-    # Zero out numeric FILEVERSION/PRODUCTVERSION for dev builds so they
-    # can never be confused with or outrank a real release by comparison.
-    set(APP_VERSION_MAJOR 0)
-    set(APP_VERSION_MINOR 0)
-    set(APP_VERSION_PATCH 0)
     execute_process(
         COMMAND git describe --always --dirty
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
@@ -853,6 +848,12 @@ if(WIN32)
 
     # Register executable (used for shortcuts etc.)
     set(CPACK_PACKAGE_EXECUTABLES "jellyfin-desktop" "Jellyfin Desktop")
+
+    # Suppress common CPack-WiX ICE warnings:
+    # ICE61: Same version upgrade (dev builds use same 3.0.0.x)
+    # ICE69: Mismatched component reference for shortcuts (CPack artifact)
+    # ICE90: Shortcuts in public folders with per-user/machine toggle
+    set(CPACK_WIX_LIGHT_EXTRA_FLAGS "-sice:ICE61;-sice:ICE69;-sice:ICE90")
 
     # Branding
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/resources/win/jellyfin.ico")
