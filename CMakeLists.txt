@@ -842,8 +842,8 @@ if(WIN32)
     set(CPACK_WIX_PROPERTY_WixAppFolder "WixPerUserFolder")
 
     # Default install directory (user can change it)
-    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin\\Jellyfin Desktop")
-    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin\\Jellyfin Desktop")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin/Jellyfin Desktop")
+    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin/Jellyfin Desktop")
 
     # Start menu folder
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Jellyfin")
