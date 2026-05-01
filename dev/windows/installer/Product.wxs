@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Defines passed in by bundle.ps1 via -d flags:
+    ProductName       e.g. "Jellyfin Desktop" or "Jellyfin Desktop (dev-abc1234)"
+    ProductVersion    e.g. "3.0.0.0" or "3.0.0.1234"
+    UpgradeCode       e.g. "{D4E5F6A7-...}" — fixed for releases, UUID v5 for dev
+    IsDevBuild        "0" for release, "1" for dev — controls MajorUpgrade
+    InstallDirName    e.g. "Jellyfin Desktop (dev-abc1234)" — used as folder name
+    SourceDir         absolute path to cmake --install output directory
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="$(var.ProductName)"
+           Manufacturer="Jellyfin Contributors"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="$(var.UpgradeCode)">
+
+    <SummaryInformation Description="$(var.ProductName) Installer" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!--
+      Release builds: MajorUpgrade removes the old version before installing the new.
+      AllowDowngrades="yes" permits rolling back to an earlier release.
+      Dev builds skip this entirely — each dev build is its own independent install slot
+      (separate UpgradeCode per SHA means they never upgrade each other).
+    -->
+    <?if $(var.IsDevBuild) = 0 ?>
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                  AllowDowngrades="yes" />
+    <?endif?>
+
+    <!--
+      Default install paths, set before the installer UI runs.
+      WixUI_Advanced sets MSIINSTALLPERUSER based on user's scope selection.
+      APPLICATIONFOLDER is what the install directory page binds to.
+    -->
+    <SetProperty Id="APPLICATIONFOLDER"
+                 Value="[ProgramFilesFolder]Jellyfin\$(var.InstallDirName)"
+                 After="AppSearch"
+                 Condition="NOT APPLICATIONFOLDER AND NOT MSIINSTALLPERUSER" />
+    <SetProperty Id="APPLICATIONFOLDER"
+                 Value="[LocalAppDataFolder]Programs\Jellyfin\$(var.InstallDirName)"
+                 After="AppSearch"
+                 Condition="NOT APPLICATIONFOLDER AND MSIINSTALLPERUSER = 1" />
+
+    <!-- WixUI_Advanced: provides scope selection + install directory page -->
+    <UIRef Id="WixUI_Advanced" />
+    <!-- Our custom dialog layer: inserts desktop shortcut checkbox -->
+    <UIRef Id="WixUI_Custom_DesktopShortcut" />
+
+    <!-- DESKTOPSHORTCUT=1 enables the desktop shortcut feature (set by checkbox or silent CLI) -->
+    <Property Id="DESKTOPSHORTCUT" Value="" />
+
+    <!-- ==================== Directory tree ========================= -->
+    <StandardDirectory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="APPLICATIONFOLDER">
+
+        <!-- Main executable — listed separately to attach the Start Menu shortcut -->
+        <Component Id="MainExecutable" Guid="*">
+          <File Id="JellyfinDesktopExe"
+                Name="jellyfin-desktop.exe"
+                Source="$(var.SourceDir)\jellyfin-desktop.exe"
+                KeyPath="yes" />
+        </Component>
+
+        <!-- All other files: CEF DLLs, mpv DLLs, .pak files, locales/, etc.
+             WiX v4 bulk-harvests these at compile time from SourceDir.
+             Each matched file gets its own component with an auto-generated GUID. -->
+        <ComponentGroup Id="HarvestedFiles" Directory="APPLICATIONFOLDER">
+          <Files Include="$(var.SourceDir)\**\*"
+                 ExcludePattern="jellyfin-desktop.exe" />
+        </ComponentGroup>
+
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Start Menu folder + shortcut (always installed) -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuSubfolder" Name="$(var.ProductName)">
+        <Component Id="StartMenuShortcutComp" Guid="*">
+          <Shortcut Id="StartMenuShortcut"
+                    Name="$(var.ProductName)"
+                    Target="[APPLICATIONFOLDER]jellyfin-desktop.exe"
+                    WorkingDirectory="APPLICATIONFOLDER" />
+          <RemoveFolder Id="RemoveProgramMenuSubfolder"
+                        On="uninstall" />
+          <RegistryValue Root="HKCU"
+                         Key="Software\Jellyfin\Desktop\$(var.ProductName)"
+                         Name="StartMenuShortcut"
+                         Value="1"
+                         Type="integer"
+                         KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Desktop shortcut (opt-in, installed only when DESKTOPSHORTCUT=1) -->
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcutComp" Guid="*">
+        <Shortcut Id="DesktopShortcut"
+                  Name="$(var.ProductName)"
+                  Target="[APPLICATIONFOLDER]jellyfin-desktop.exe"
+                  WorkingDirectory="APPLICATIONFOLDER" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\Jellyfin\Desktop\$(var.ProductName)"
+                       Name="DesktopShortcut"
+                       Value="1"
+                       Type="integer"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <!-- ==================== Features =============================== -->
+    <Feature Id="ProductFeature" Title="$(var.ProductName)" Level="1">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentGroupRef Id="HarvestedFiles" />
+      <ComponentRef Id="StartMenuShortcutComp" />
+
+      <!-- Desktop shortcut feature: Level 0 = off by default.
+           Condition raises Level to 1 (on) when user checks the box. -->
+      <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="0">
+        <Condition Level="1">DESKTOPSHORTCUT = 1</Condition>
+        <ComponentRef Id="DesktopShortcutComp" />
+      </Feature>
+    </Feature>
+
+  </Package>
+</Wix>
