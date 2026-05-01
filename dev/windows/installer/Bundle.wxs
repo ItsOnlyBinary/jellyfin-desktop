@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Defines passed in by bundle.ps1 via -d flags:
+    ProductName       e.g. "Jellyfin Desktop"
+    ProductVersion    e.g. "3.0.0.0" or "3.0.0.1234"
+    BundleUpgradeCode e.g. "{A1B2C3D4-...}"
+    MsiPath           absolute path to the already-built MSI
+    VcRedistPath      absolute path to vc_redist.<arch>.exe
+    VcRedistArch      "X64" or "ARM64" - used in registry detection key
+
+  Code signing (no certificate yet):
+    1. Sign the MSI before building this bundle (Burn embeds the signed MSI).
+    2. Build this bundle (wix build Bundle.wxs to EXE).
+    3. Sign the EXE.
+    4. Re-sign the Burn engine stub with insignia (required for Authenticode validity).
+    See bundle.ps1 CODE SIGNING block for exact commands.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="$(var.ProductName)"
+          Version="$(var.ProductVersion)"
+          Manufacturer="Jellyfin Contributors"
+          UpgradeCode="$(var.BundleUpgradeCode)">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="standard"
+          SuppressOptionsUI="no" />
+    </BootstrapperApplication>
+
+    <Chain>
+
+      <!--
+        VC Redist 2022 - embedded into this EXE (no internet required at install time).
+        Skipped automatically when already installed (registry detection below).
+
+        UPDATE THIS BLOCK when a new VC Redist version ships:
+          - Source URL comment below
+          - The registry Key path (if the VS major version changes)
+      -->
+
+      <!-- Detect: HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\<arch> "Installed" = 1
+           Current VC Redist source: https://aka.ms/vs/17/release/vc_redist.<arch>.exe (VS 2022 17.x) -->
+      <RegistrySearch Id="VcRedistSearch"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\$(var.VcRedistArch)"
+                      Value="Installed"
+                      Variable="VcRedistInstalled"
+                      Type="value"
+                      Format="integer"
+                      Win64="no" />
+
+      <ExePackage Id="VcRedist2022"
+                  DisplayName="Microsoft Visual C++ 2022 Redistributable ($(var.VcRedistArch))"
+                  SourceFile="$(var.VcRedistPath)"
+                  PerMachine="yes"
+                  Permanent="yes"
+                  Vital="yes"
+                  InstallCommand="/install /quiet /norestart"
+                  RepairCommand="/repair /quiet /norestart"
+                  UninstallCommand="/uninstall /quiet /norestart"
+                  DetectCondition="VcRedistInstalled = 1" />
+
+      <!-- Jellyfin Desktop MSI.
+           DisplayInternalUI="yes": the MSI's WixUI_Advanced wizard handles
+           per-user/per-machine scope and install directory selection. -->
+      <MsiPackage Id="JellyfinDesktopMsi"
+                  SourceFile="$(var.MsiPath)"
+                  Vital="yes"
+                  DisplayInternalUI="yes" />
+
+    </Chain>
+  </Bundle>
+</Wix>
