@@ -1,39 +1,91 @@
-<CPackWiXPatch>
-  <!-- Global settings and Features -->
-  <CPackWixFragment Id="#PRODUCT">
-    <Property Id="WixPerUserFolder" Value="[LocalAppDataFolder]Programs" />
+<?xml version="1.0" encoding="UTF-8"?>
+<CPackWiXPatch xmlns="http://schemas.microsoft.com/wix/2006/wi">
 
-    <Feature Id="StartMenuShortcutFeature" Title="Start Menu Shortcut" Level="1" Description="Create a shortcut for Jellyfin Desktop in the Start Menu.">
-      <ComponentRef Id="StartMenuShortcut"/>
+  <!-- Property to control desktop shortcut -->
+  <Property Id="DESKTOP_SHORTCUT" Value="1"/>
+
+  <!-- Reference default advanced UI -->
+  <UI>
+    <UIRef Id="WixUI_Advanced"/>
+
+    <!-- Add checkbox to install directory dialog -->
+    <DialogRef Id="InstallDirDlg"/>
+
+    <Publish Dialog="InstallDirDlg"
+             Control="Next"
+             Event="SetProperty"
+             Value="DESKTOP_SHORTCUT=[DESKTOP_SHORTCUT]">
+    </Publish>
+
+    <!-- Checkbox control -->
+    <Control Id="DesktopShortcutCheckbox"
+             Type="CheckBox"
+             X="20" Y="200" Width="300" Height="17"
+             Property="DESKTOP_SHORTCUT"
+             CheckBoxValue="1"
+             Text="Create a desktop shortcut"/>
+  </UI>
+
+  <!-- Desktop shortcut component -->
+  <Fragment>
+    <DirectoryRef Id="TARGETDIR">
+
+      <!-- Per-user desktop -->
+      <Directory Id="DesktopFolder"/>
+
+      <!-- All users desktop -->
+      <Directory Id="CommonDesktopFolder"/>
+
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="DesktopShortcutGroup">
+
+      <!-- Per-user shortcut -->
+      <Component Id="DesktopShortcutUser" Guid="*">
+        <Condition>DESKTOP_SHORTCUT=1 AND NOT ALLUSERS</Condition>
+
+        <Shortcut Id="DesktopShortcutUser"
+                  Directory="DesktopFolder"
+                  Name="Jellyfin Desktop"
+                  Target="[INSTALLDIR]jellyfin-desktop.exe"
+                  WorkingDirectory="INSTALLDIR"/>
+
+        <RegistryValue Root="HKCU"
+                       Key="Software\Jellyfin\Desktop"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+
+      <!-- Per-machine shortcut -->
+      <Component Id="DesktopShortcutMachine" Guid="*">
+        <Condition>DESKTOP_SHORTCUT=1 AND ALLUSERS</Condition>
+
+        <Shortcut Id="DesktopShortcutMachine"
+                  Directory="CommonDesktopFolder"
+                  Name="Jellyfin Desktop"
+                  Target="[INSTALLDIR]jellyfin-desktop.exe"
+                  WorkingDirectory="INSTALLDIR"/>
+
+        <RegistryValue Root="HKLM"
+                       Key="Software\Jellyfin\Desktop"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes"/>
+      </Component>
+
+    </ComponentGroup>
+  </Fragment>
+
+  <!-- Hook shortcut components into main feature -->
+  <Fragment>
+    <Feature Id="Complete">
+      <ComponentGroupRef Id="DesktopShortcutGroup"/>
     </Feature>
-    
-    <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="1" Description="Create a shortcut for Jellyfin Desktop on your desktop.">
-      <ComponentRef Id="DesktopShortcut"/>
-    </Feature>
-  </CPackWixFragment>
+  </Fragment>
 
-  <!-- Start Menu Shortcut Component -->
-  <CPackWixFragment Id="PROGRAMMENU_FOLDER">
-    <Component Id="StartMenuShortcut" Guid="*">
-      <Shortcut Id="ApplicationStartMenuShortcut"
-                Name="Jellyfin Desktop"
-                Description="Jellyfin Desktop Client"
-                Target="[INSTALL_ROOT]jellyfin-desktop.exe"
-                WorkingDirectory="INSTALL_ROOT"/>
-      <RemoveFolder Id="PROGRAMMENU_FOLDER" On="uninstall"/>
-      <RegistryValue Root="HKMU" Key="Software\Jellyfin\JellyfinDesktop" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
-    </Component>
-  </CPackWixFragment>
-
-  <!-- Desktop Shortcut Component -->
-  <CPackWixFragment Id="DesktopFolder">
-    <Component Id="DesktopShortcut" Guid="*">
-      <Shortcut Id="ApplicationDesktopShortcut"
-                Name="Jellyfin Desktop"
-                Description="Jellyfin Desktop Client"
-                Target="[INSTALL_ROOT]jellyfin-desktop.exe"
-                WorkingDirectory="INSTALL_ROOT"/>
-      <RegistryValue Root="HKMU" Key="Software\Jellyfin\JellyfinDesktop" Name="desktopshortcut" Type="integer" Value="1" KeyPath="yes"/>
-    </Component>
-  </CPackWixFragment>
 </CPackWiXPatch>

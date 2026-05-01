@@ -86,10 +86,14 @@ jobs:
           cd build
           cpack -B ../dist
 
-      - name: Upload artifact
+      - name: Upload ZIP artifact
         uses: actions/upload-artifact@v7
         with:
-          name: windows-${{ matrix.arch }}
-          path: |
-            dist/JellyfinDesktop-*.zip
-            dist/JellyfinDesktop-*.msi
+          path: dist/JellyfinDesktop-*.zip
+          archive: false
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/JellyfinDesktop-*.msi
+          archive: false

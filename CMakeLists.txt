@@ -822,23 +822,49 @@ if(WIN32)
     endif()
     set(CPACK_PACKAGE_FILE_NAME "JellyfinDesktop-${APP_VERSION_FULL}-windows-${_WIN_ARCH}")
     set(CPACK_GENERATOR "ZIP;WIX")
-    set(CPACK_WIX_UPGRADE_GUID "51AE6C24-671F-4DAE-B2EC-DC49E0947B97")
-    set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/resources/win/jellyfin.ico")
-    
-    # WiX requires .txt or .rtf for the license
-    configure_file("${CMAKE_SOURCE_DIR}/LICENSE" "${CMAKE_BINARY_DIR}/LICENSE.txt" COPYONLY)
-    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_BINARY_DIR}/LICENSE.txt")
+        # --- MSI / WiX configuration ---
 
-    # Enable per-user / per-machine choice
+    # Stable across all versions (DO NOT CHANGE)
+    set(CPACK_WIX_UPGRADE_GUID "51AE6C24-671F-4DAE-B2EC-DC49E0947B97")
+
+    # Regenerate per build → enables proper upgrades
+    set(CPACK_WIX_PRODUCT_GUID "*")
+
+    # Architecture (important for Program Files vs x86)
+    if(_WIN_ARCH STREQUAL "x64" OR _WIN_ARCH STREQUAL "arm64")
+        set(CPACK_WIX_ARCHITECTURE "x64")
+    endif()
+
+    # UI: allows install scope selection + directory selection
     set(CPACK_WIX_UI_REF "WixUI_Advanced")
-    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin/Jellyfin Desktop")
-    set(CPACK_WIX_PROPERTY_WixAppFolder "WixPerMachineFolder")
-    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin/Jellyfin Desktop")
+
+    # Allow per-user OR per-machine installs
+    set(CPACK_WIX_PROPERTY_WixAppFolder "WixPerUserFolder")
+
+    # Default install directory (user can change it)
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Jellyfin\\Jellyfin Desktop")
+    set(CPACK_WIX_PROPERTY_ApplicationFolderName "Jellyfin\\Jellyfin Desktop")
+
+    # Start menu folder
     set(CPACK_WIX_PROGRAM_MENU_FOLDER "Jellyfin")
 
-    # Add shortcuts via patch
-    set(CPACK_WIX_PROPERTY_ARPPRODUCTICON "ProductIcon")
-    set(CPACK_WIX_PATCH_FILE "${CMAKE_SOURCE_DIR}/resources/win/wix_patch.xml")
+    # Register executable (used for shortcuts etc.)
+    set(CPACK_PACKAGE_EXECUTABLES "jellyfin-desktop" "Jellyfin Desktop")
+
+    # Branding
+    set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/resources/win/jellyfin.ico")
+
+    # License must be .txt or .rtf
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/LICENSE"
+        "${CMAKE_BINARY_DIR}/LICENSE.txt"
+        COPYONLY
+    )
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_BINARY_DIR}/LICENSE.txt")
+
+    # Patch file for custom UI + optional shortcut
+    set(CPACK_WIX_PATCH_FILE
+        "${CMAKE_SOURCE_DIR}/resources/win/wix_patch.xml")
 elseif(APPLE)
     set(CPACK_GENERATOR "ZIP")
 else()
