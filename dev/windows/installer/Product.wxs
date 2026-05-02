@@ -70,14 +70,6 @@
                 KeyPath="yes" />
         </Component>
 
-        <!-- All other files: CEF DLLs, mpv DLLs, .pak files, locales/, etc.
-             WiX v4 bulk-harvests these at compile time from SourceDir.
-             Each matched file gets its own component with an auto-generated GUID. -->
-        <ComponentGroup Id="HarvestedFiles" Directory="APPLICATIONFOLDER">
-          <Files Include="$(var.SourceDir)\**\*"
-                 ExcludePattern="jellyfin-desktop.exe" />
-        </ComponentGroup>
-
       </Directory>
     </StandardDirectory>
 
@@ -103,7 +95,7 @@
 
     <!-- Desktop shortcut (opt-in, installed only when DESKTOPSHORTCUT=1) -->
     <StandardDirectory Id="DesktopFolder">
-      <Component Id="DesktopShortcutComp" Guid="*">
+      <Component Id="DesktopShortcutComp" Guid="*" Condition='DESKTOPSHORTCUT = "1"'>
         <Shortcut Id="DesktopShortcut"
                   Name="$(var.ProductName)"
                   Target="[APPLICATIONFOLDER]jellyfin-desktop.exe"
@@ -122,14 +114,18 @@
       <ComponentRef Id="MainExecutable" />
       <ComponentGroupRef Id="HarvestedFiles" />
       <ComponentRef Id="StartMenuShortcutComp" />
-
-      <!-- Desktop shortcut feature: Level 0 = off by default.
-           Condition raises Level to 1 (on) when user checks the box. -->
-      <Feature Id="DesktopShortcutFeature" Title="Desktop Shortcut" Level="0">
-        <Condition Level="1">DESKTOPSHORTCUT = "1"</Condition>
-        <ComponentRef Id="DesktopShortcutComp" />
-      </Feature>
+      <ComponentRef Id="DesktopShortcutComp" />
     </Feature>
 
   </Package>
+
+  <Fragment>
+    <!-- All other files: CEF DLLs, mpv DLLs, .pak files, locales/, etc.
+         Bulk-harvested at compile time from SourceDir. -->
+    <ComponentGroup Id="HarvestedFiles" Directory="APPLICATIONFOLDER">
+      <Files Include="$(var.SourceDir)\**\*"
+             ExcludePattern="jellyfin-desktop.exe" />
+    </ComponentGroup>
+  </Fragment>
+
 </Wix>

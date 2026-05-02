@@ -22,12 +22,12 @@
         <Control Id="Title" Type="Text"
                  X="15" Y="6" Width="200" Height="15"
                  Transparent="yes" NoPrefix="yes">
-          <Text>{\WixUI_Font_Title}Installation Options</Text>
+          <Text Value="{\WixUI_Font_Title}Installation Options" />
         </Control>
         <Control Id="Description" Type="Text"
                  X="25" Y="23" Width="280" Height="15"
                  Transparent="yes" NoPrefix="yes">
-          <Text>Choose optional components.</Text>
+          <Text Value="Choose optional components." />
         </Control>
         <Control Id="BottomLine" Type="Line"
                  X="0" Y="234" Width="370" Height="0" />
@@ -35,7 +35,7 @@
         <Control Id="DesktopShortcutCheck" Type="CheckBox"
                  X="20" Y="70" Width="330" Height="17"
                  Property="DESKTOPSHORTCUT" CheckBoxValue="1">
-          <Text>Create a desktop shortcut</Text>
+          <Text Value="Create a desktop shortcut" />
         </Control>
 
         <Control Id="Back" Type="PushButton"
