@@ -87,6 +87,7 @@ jobs:
           cpack -G ZIP -B ../dist
 
       - name: Install WiX v4
+        shell: pwsh
         run: |
           dotnet tool install --global wix
           wix extension add WixToolset.UI.wixext
@@ -103,7 +104,7 @@ jobs:
       - name: Build installers
         shell: pwsh
         run: |
-          dev\windows\installer\bundle.ps1 `
+          & dev\windows\installer\bundle.ps1 `
             -Arch ${{ matrix.arch }} `
             -InstallDir build\install `
             -VcRedist build\vc_redist.exe
