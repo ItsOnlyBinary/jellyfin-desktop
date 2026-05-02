@@ -29,7 +29,7 @@ $VersionNumeric = $VersionRaw -replace "-.*$", ""
 $RunNumber = if ($env:GITHUB_RUN_NUMBER) {
     [int][Math]::Min([Math]::Max(0, [int]$env:GITHUB_RUN_NUMBER), 65535)
 } else { 0 }
-$ProductVersion = if ($IsDevBuild) { "$VersionNumeric.$RunNumber" } else { "$VersionNumeric.0" }
+$ProductVersion = if ($IsDevBuild) { "$VersionNumeric.$RunNumber" } else { $VersionNumeric }
 
 # --- Git SHA (dev builds only) -----------------------------------------
 $ShortSha = ""
