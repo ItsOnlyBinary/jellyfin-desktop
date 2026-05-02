@@ -132,7 +132,7 @@ Write-Host "Building MSI: $MsiName"
   -d "InstallDirName=$InstallDirName" `
   -d "SourceDir=$InstallDirFull" `
   -arch $Arch `
-  -o $MsiPath
+  -o "$MsiPath"
 
 if ($LASTEXITCODE -ne 0) { throw "MSI build failed" }
 Write-Host "MSI: $MsiPath"
@@ -164,7 +164,7 @@ Write-Host "Building EXE bundle: $ExeName"
   -d "VcRedistPath=$VcRedist" `
   -d "VcRedistArch=$VcRedistArch" `
   -arch $Arch `
-  -o $ExePath
+  -o "$ExePath"
 
 if ($LASTEXITCODE -ne 0) { throw "EXE bundle build failed" }
 Write-Host "EXE: $ExePath"
