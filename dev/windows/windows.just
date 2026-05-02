@@ -15,3 +15,7 @@ test: build
 [windows]
 run: build
     build\jellyfin-desktop.exe --log-level=debug --log-file=build\run.log
+
+[windows]
+installer: build
+    powershell -ExecutionPolicy Bypass -File dev\windows\installer\bundle.ps1
