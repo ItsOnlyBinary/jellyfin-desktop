@@ -86,8 +86,42 @@ jobs:
           cd build
           cpack -G ZIP -B ../dist
 
-      - name: Upload artifact
+      - name: Install WiX v4
+        run: |
+          dotnet tool install --global wix
+          wix extension add WixToolset.UI.wixext
+          wix extension add WixToolset.Bal.wixext
+          wix extension add WixToolset.Util.wixext
+
+      - name: Download VC Redist 2022
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://aka.ms/vs/17/release/vc_redist.${{ matrix.arch }}.exe" `
+            -OutFile "build\vc_redist.exe"
+
+      - name: Build installers
+        shell: pwsh
+        run: |
+          dev\windows\installer\bundle.ps1 `
+            -Arch ${{ matrix.arch }} `
+            -InstallDir build\install `
+            -VcRedist build\vc_redist.exe
+
+      - name: Upload ZIP artifact
         uses: actions/upload-artifact@v7
         with:
-          name: windows-${{ matrix.arch }}
           path: dist/JellyfinDesktop-*.zip
+          archive: false
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/JellyfinDesktop-*.msi
+          archive: false
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/JellyfinDesktop-*.exe
+          archive: false
