@@ -97,3 +97,100 @@ Write-Host "MsiPath:            $MsiPath"
 Write-Host "ExePath:            $ExePath"
 Write-Host "InstallDirFull:     $InstallDirFull"
 Write-Host "VcRedistArch:       $VcRedistArch"
+
+# --- VC Redist --------------------------------------------------------
+$VcRedistUrl = "https://aka.ms/vs/17/release/vc_redist.$Arch.exe"
+
+if (-not $VcRedist) {
+    Write-Host "Downloading VC Redist 2022 ($Arch)..."
+    $VcRedist = Join-Path $env:TEMP "vc_redist_$Arch.exe"
+    Invoke-WebRequest -Uri $VcRedistUrl -OutFile $VcRedist
+    Write-Host "Downloaded to $VcRedist"
+} elseif (-not [System.IO.Path]::IsPathRooted($VcRedist)) {
+    $VcRedist = Join-Path $RepoRoot $VcRedist
+}
+
+if (-not (Test-Path $VcRedist)) {
+    throw "VC Redist not found at $VcRedist"
+}
+
+# --- Build MSI --------------------------------------------------------
+New-Item -ItemType Directory -Force $DistDir | Out-Null
+
+$InstallerSrcDir = $PSScriptRoot
+
+Write-Host "Building MSI: $MsiName"
+& wix build `
+  "$InstallerSrcDir\Product.wxs" `
+  "$InstallerSrcDir\WixUI_Custom.wxs" `
+  -ext WixToolset.UI.wixext `
+  -ext WixToolset.Util.wixext `
+  -d "ProductName=$ProductName" `
+  -d "ProductVersion=$ProductVersion" `
+  -d "UpgradeCode=$MsiUpgradeCode" `
+  -d "IsDevBuild=$(if ($IsDevBuild) { '1' } else { '0' })" `
+  -d "InstallDirName=$InstallDirName" `
+  -d "SourceDir=$InstallDirFull" `
+  -arch $Arch `
+  -o $MsiPath
+
+if ($LASTEXITCODE -ne 0) { throw "MSI build failed" }
+Write-Host "MSI: $MsiPath"
+
+# CODE SIGNING
+# Uncomment and configure when a code signing certificate is available.
+# The MSI must be signed BEFORE building the EXE (Burn embeds it).
+#
+# & signtool sign `
+#     /fd SHA256 `
+#     /tr http://timestamp.digicert.com `
+#     /td SHA256 `
+#     /d "Jellyfin Desktop" `
+#     /du "https://jellyfin.org" `
+#     /n "Your Certificate Subject Name" `
+#     $MsiPath
+# if ($LASTEXITCODE -ne 0) { throw "MSI signing failed" }
+
+# --- Build EXE --------------------------------------------------------
+Write-Host "Building EXE bundle: $ExeName"
+& wix build `
+  "$InstallerSrcDir\Bundle.wxs" `
+  -ext WixToolset.Bal.wixext `
+  -ext WixToolset.Util.wixext `
+  -d "ProductName=$ProductName" `
+  -d "ProductVersion=$ProductVersion" `
+  -d "BundleUpgradeCode=$BundleUpgradeCode" `
+  -d "MsiPath=$MsiPath" `
+  -d "VcRedistPath=$VcRedist" `
+  -d "VcRedistArch=$VcRedistArch" `
+  -arch $Arch `
+  -o $ExePath
+
+if ($LASTEXITCODE -ne 0) { throw "EXE bundle build failed" }
+Write-Host "EXE: $ExePath"
+
+# CODE SIGNING
+# Uncomment and configure when a code signing certificate is available.
+# Sign the EXE after building, then re-sign the embedded Burn engine stub.
+#
+# & signtool sign `
+#     /fd SHA256 `
+#     /tr http://timestamp.digicert.com `
+#     /td SHA256 `
+#     /d "Jellyfin Desktop" `
+#     /du "https://jellyfin.org" `
+#     /n "Your Certificate Subject Name" `
+#     $ExePath
+# if ($LASTEXITCODE -ne 0) { throw "EXE signing failed" }
+#
+# Re-sign the Burn engine (required to keep Authenticode valid after Burn embeds the MSI):
+# $enginePath = Join-Path $env:TEMP "burn_engine.exe"
+# & insignia -ib $ExePath -o $enginePath
+# & signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+#     /n "Your Certificate Subject Name" $enginePath
+# & insignia -ab $enginePath $ExePath -o $ExePath
+
+Write-Host ""
+Write-Host "Installer build complete." -ForegroundColor Green
+Write-Host "  MSI: $MsiPath"
+Write-Host "  EXE: $ExePath"
