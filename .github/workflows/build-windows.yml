@@ -86,13 +86,13 @@ jobs:
           cd build
           cpack -G ZIP -B ../dist
 
-      - name: Install WiX v4
+      - name: Install WiX
         shell: pwsh
         run: |
-          dotnet tool install --global wix --version "4.*"
-          wix extension add WixToolset.UI.wixext
-          wix extension add WixToolset.Bal.wixext
-          wix extension add WixToolset.Util.wixext
+          dotnet tool install --global wix
+          wix extension add WixToolset.UI.wixext -acceptEula wix7
+          wix extension add WixToolset.Bal.wixext -acceptEula wix7
+          wix extension add WixToolset.Util.wixext -acceptEula wix7
 
       - name: Download VC Redist 2022
         shell: pwsh

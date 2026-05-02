@@ -121,6 +121,7 @@ $InstallerSrcDir = $PSScriptRoot
 
 Write-Host "Building MSI: $MsiName"
 & wix build `
+  -acceptEula wix7 `
   "$InstallerSrcDir\Product.wxs" `
   "$InstallerSrcDir\WixUI_Custom.wxs" `
   -ext WixToolset.UI.wixext `
@@ -154,6 +155,7 @@ Write-Host "MSI: $MsiPath"
 # --- Build EXE --------------------------------------------------------
 Write-Host "Building EXE bundle: $ExeName"
 & wix build `
+  -acceptEula wix7 `
   "$InstallerSrcDir\Bundle.wxs" `
   -ext WixToolset.Bal.wixext `
   -ext WixToolset.Util.wixext `
