@@ -50,7 +50,7 @@
     <!-- Our custom dialog layer: inserts desktop shortcut checkbox -->
     <UIRef Id="WixUI_Custom_DesktopShortcut" />
 
-    <!-- DESKTOPSHORTCUT=1 enables the desktop shortcut feature (set by checkbox or silent CLI).
+    <!-- DESKTOPSHORTCUT=1 enables the desktop shortcut (set by checkbox or silent CLI).
          On repair/upgrade the registry search restores the previously chosen value. -->
     <Property Id="DESKTOPSHORTCUT">
       <RegistrySearch Id="SearchDesktopShortcut" Root="HKCU"
@@ -60,17 +60,7 @@
 
     <!-- ==================== Directory tree ========================= -->
     <StandardDirectory Id="TARGETDIR">
-      <Directory Id="APPLICATIONFOLDER">
-
-        <!-- Main executable — listed separately to attach the Start Menu shortcut -->
-        <Component Id="MainExecutable" Guid="*">
-          <File Id="JellyfinDesktopExe"
-                Name="jellyfin-desktop.exe"
-                Source="$(var.SourceDir)\jellyfin-desktop.exe"
-                KeyPath="yes" />
-        </Component>
-
-      </Directory>
+      <Directory Id="APPLICATIONFOLDER" />
     </StandardDirectory>
 
     <!-- Start Menu folder + shortcut (always installed) -->
@@ -111,7 +101,6 @@
 
     <!-- ==================== Features =============================== -->
     <Feature Id="ProductFeature" Title="$(var.ProductName)" Level="1">
-      <ComponentRef Id="MainExecutable" />
       <ComponentGroupRef Id="HarvestedFiles" />
       <ComponentRef Id="StartMenuShortcutComp" />
       <ComponentRef Id="DesktopShortcutComp" />
@@ -120,11 +109,9 @@
   </Package>
 
   <Fragment>
-    <!-- All other files: CEF DLLs, mpv DLLs, .pak files, locales/, etc.
-         Bulk-harvested at compile time from SourceDir. -->
+    <!-- All files harvested at compile time from SourceDir (exe, DLLs, .pak, locales/, etc.) -->
     <ComponentGroup Id="HarvestedFiles" Directory="APPLICATIONFOLDER">
-      <Files Include="$(var.SourceDir)\**\*"
-             Exclude="$(var.SourceDir)\jellyfin-desktop.exe" />
+      <Files Include="$(var.SourceDir)\**\*" />
     </ComponentGroup>
   </Fragment>
 
