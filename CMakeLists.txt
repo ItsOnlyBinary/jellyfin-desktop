@@ -1,4 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
+
+if(WIN32)
+    # Use static runtime on Windows to match CEF wrapper (which uses /MT).
+    # This must be set before project() so that CMake can strip the default /MD
+    # from the initial flag setup, avoiding D9025 warnings.
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 project(jellyfin-desktop LANGUAGES C CXX)
 
 # Enable Objective-C++ on macOS
@@ -60,9 +68,8 @@ else()
     set(APP_VERSION_FULL "${APP_VERSION}")
 endif()
 
-# Use static runtime on Windows to match CEF wrapper (which uses /MT)
+# Additional MSVC-specific options
 if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     add_compile_definitions(NOMINMAX)
     # Conforming preprocessor: quill (and fmt) rely on standard ##__VA_ARGS__
     # handling. MSVC's legacy preprocessor mis-expands the variadic, which

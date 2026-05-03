@@ -133,8 +133,15 @@ elseif(CEF_ROOT AND EXISTS "${CEF_ROOT}/include/cef_version.h")
         if(CMAKE_GENERATOR)
             list(APPEND _CEF_CMAKE_ARGS -G "${CMAKE_GENERATOR}")
         endif()
-        if(WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
-            list(APPEND _CEF_CMAKE_ARGS -DPROJECT_ARCH=arm64)
+        if(WIN32)
+            if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+                list(APPEND _CEF_CMAKE_ARGS -DPROJECT_ARCH=arm64)
+            endif()
+            if(CMAKE_MSVC_RUNTIME_LIBRARY)
+                list(APPEND _CEF_CMAKE_ARGS "-DCMAKE_MSVC_RUNTIME_LIBRARY=${CMAKE_MSVC_RUNTIME_LIBRARY}")
+            endif()
+            # Ensure policy CMP0091 is NEW in the sub-build so it respects CMAKE_MSVC_RUNTIME_LIBRARY
+            list(APPEND _CEF_CMAKE_ARGS "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW")
         endif()
         execute_process(
             COMMAND ${CMAKE_COMMAND} ${_CEF_CMAKE_ARGS}
