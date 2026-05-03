@@ -18,6 +18,7 @@ enum class MpvEventType {
     SPEED,
     SEEKING,
     DISPLAY_FPS,
+    DISPLAY_SCALE,
     BUFFERED_RANGES,
 };
 

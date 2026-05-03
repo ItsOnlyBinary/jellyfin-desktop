@@ -231,7 +231,13 @@ static void win_present(const CefAcceleratedPaintInfo& info) {
 
     // Drop frames during transition (same logic as Wayland)
     if (g_win.transitioning) {
-        if (g_win.expected_w <= 0 || (w == g_win.transition_pw && h == g_win.transition_ph)) {
+        if (g_win.expected_w <= 0) {
+            src->Release();
+            return;
+        }
+        // Drop frames that match the OLD size if we are expecting a NEW size.
+        if (w == g_win.transition_pw && h == g_win.transition_ph &&
+            (w != g_win.expected_w || h != g_win.expected_h)) {
             src->Release();
             return;
         }
@@ -691,16 +697,28 @@ static LRESULT CALLBACK mpv_wndproc_hook(int nCode, WPARAM wp, LPARAM lp) {
                         if (g_win.transitioning)
                             win_end_transition_locked();
                     } else if (fs != g_win.was_fullscreen) {
-                        if (!g_win.transitioning)
+                        if (!g_win.transitioning) {
                             win_begin_transition_locked();
-                        else
+                            g_win.expected_w = pw;
+                            g_win.expected_h = ph;
+                        } else {
                             win_end_transition_locked();
+                        }
                         g_win.was_fullscreen = fs;
                     } else if (g_win.transitioning) {
                         win_end_transition_locked();
                     }
                     update_surface_size_locked(lw, lh, pw, ph);
                 }
+            } else if (msg->message == WM_DISPLAYCHANGE) {
+                LOG_INFO(LOG_PLATFORM, "WM_DISPLAYCHANGE received");
+                win_get_scale(); // Update cached_scale
+                // On display change (e.g. screen wake), force-invalidate the
+                // browsers so they redraw at the potentially new resolution/scale.
+                if (g_web_browser && g_web_browser->browser())
+                    g_web_browser->browser()->GetHost()->Invalidate(PET_VIEW);
+                if (g_overlay_browser && g_overlay_browser->browser())
+                    g_overlay_browser->browser()->GetHost()->Invalidate(PET_VIEW);
             } else if (msg->message == WM_CLOSE) {
                 initiate_shutdown();
             }

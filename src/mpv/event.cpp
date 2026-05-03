@@ -1,6 +1,7 @@
 #include "event.h"
 #include "handle.h"
 #include "../common.h"
+#include "../logging.h"
 #ifdef __APPLE__
 #include "../platform/macos_platform.h"
 #endif
@@ -133,12 +134,28 @@ MpvEvent digest_property(uint64_t id, mpv_event_property* p) {
         s_window_maximized.store(*static_cast<int*>(p->data) != 0,
                                  std::memory_order_relaxed);
         break;
-    case MPV_OBSERVE_DISPLAY_SCALE:
-        // Silent update: callers read mpv::display_scale() on demand.
+    case MPV_OBSERVE_DISPLAY_SCALE: {
         if (p->format != MPV_FORMAT_DOUBLE) break;
-        s_display_scale.store(*static_cast<double*>(p->data),
-                              std::memory_order_relaxed);
+        double new_scale = *static_cast<double*>(p->data);
+        double old_scale = s_display_scale.exchange(new_scale, std::memory_order_relaxed);
+        if (std::abs(new_scale - old_scale) > 0.001) {
+            LOG_INFO(LOG_MPV, "display-hidpi-scale changed: {} -> {}", old_scale, new_scale);
+            // Scale changed. If we have OSD dims, generate an OSD_DIMS event
+            // so browsers re-layout with the new scale.
+            int pw = s_osd_pw.load(std::memory_order_relaxed);
+            int ph = s_osd_ph.load(std::memory_order_relaxed);
+            if (pw > 0 && ph > 0) {
+                ev.type = MpvEventType::OSD_DIMS;
+                ev.pw = pw;
+                ev.ph = ph;
+                float fscale = static_cast<float>(new_scale);
+                if (fscale <= 0) fscale = 1.0f;
+                ev.lw = static_cast<int>(pw / fscale);
+                ev.lh = static_cast<int>(ph / fscale);
+            }
+        }
         break;
+    }
     case MPV_OBSERVE_DISPLAY_FPS: {
         if (p->format != MPV_FORMAT_DOUBLE) break;
         double fps = *static_cast<double*>(p->data);
