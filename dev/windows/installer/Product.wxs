@@ -124,7 +124,7 @@
          Bulk-harvested at compile time from SourceDir. -->
     <ComponentGroup Id="HarvestedFiles" Directory="APPLICATIONFOLDER">
       <Files Include="$(var.SourceDir)\**\*"
-             ExcludePattern="jellyfin-desktop.exe" />
+             Exclude="$(var.SourceDir)\jellyfin-desktop.exe" />
     </ComponentGroup>
   </Fragment>
 
